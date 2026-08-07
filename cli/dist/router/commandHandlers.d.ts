@@ -2,7 +2,7 @@ import { ParsedSlashCommand } from './SlashCommandRouter.js';
 import { BackendApiClient } from '../api/BackendApiClient.js';
 export interface CommandExecutionResult {
     handledLocally: boolean;
-    activeViewTarget?: 'intake' | 'graph' | 'diff' | 'trace' | 'summary' | 'memory';
+    activeViewTarget?: 'intake' | 'graph' | 'diff' | 'trace' | 'summary' | 'memory' | 'benchmark';
     fileFilter?: string;
     feedbackMessage?: string;
 }

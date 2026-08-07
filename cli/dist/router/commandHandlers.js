@@ -27,12 +27,24 @@ export async function handleSlashCommand(cmd, sessionId, apiClient) {
                 activeViewTarget: 'trace',
                 feedbackMessage: 'Switched to Trace View.'
             };
+        case 'summary':
+            return {
+                handledLocally: true,
+                activeViewTarget: 'summary',
+                feedbackMessage: 'Switched to Reviewer Summary View.'
+            };
         case 'memory':
             const items = await apiClient.fetchMemoryItems(sessionId);
             return {
                 handledLocally: true,
                 activeViewTarget: 'memory',
                 feedbackMessage: `Switched to Memory Inspect View (${items.length} items loaded).`
+            };
+        case 'benchmark':
+            return {
+                handledLocally: true,
+                activeViewTarget: 'benchmark',
+                feedbackMessage: 'Switched to Benchmark Evaluation View.'
             };
         case 'rollback':
             const res = await apiClient.rollbackSession(sessionId);
@@ -48,7 +60,7 @@ export async function handleSlashCommand(cmd, sessionId, apiClient) {
         case 'help':
             return {
                 handledLocally: true,
-                feedbackMessage: 'Available slash commands: /intake, /plan, /diff [file], /trace, /memory, /rollback, /pause'
+                feedbackMessage: 'Available slash commands: /intake, /plan, /diff [file], /trace, /summary, /memory, /benchmark, /rollback, /pause'
             };
         default:
             return {

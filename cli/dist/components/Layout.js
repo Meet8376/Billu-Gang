@@ -11,6 +11,7 @@ import { DiffView } from './views/DiffView.js';
 import { TraceView } from './views/TraceView.js';
 import { ReviewerSummaryView } from './views/ReviewerSummaryView.js';
 import { MemoryInspectView } from './views/MemoryInspectView.js';
+import { BenchmarkView } from './views/BenchmarkView.js';
 export const Layout = ({ session, onCommandSubmit, intakeSteps, intakeReady, taskTitle, taskNodes, activeViewOverride, diffFileFilter, pendingApproval, onApprovalResponse }) => {
     const [activeView, setActiveView] = useState('intake');
     // Allow external slash-command handler to override view state
@@ -18,7 +19,7 @@ export const Layout = ({ session, onCommandSubmit, intakeSteps, intakeReady, tas
     // Keyboard navigation across view tabs using Tab key
     useInput((input, key) => {
         if (key.tab) {
-            const views = ['intake', 'graph', 'diff', 'trace', 'summary', 'memory'];
+            const views = ['intake', 'graph', 'diff', 'trace', 'summary', 'memory', 'benchmark'];
             const currentIndex = views.indexOf(currentView);
             const nextIndex = (currentIndex + 1) % views.length;
             setActiveView(views[nextIndex]);
@@ -35,11 +36,14 @@ export const Layout = ({ session, onCommandSubmit, intakeSteps, intakeReady, tas
         else if (trimmed.startsWith('/trace') || trimmed.startsWith('/logs')) {
             setActiveView('trace');
         }
-        else if (trimmed.startsWith('/summary')) {
+        else if (trimmed.startsWith('/summary') || trimmed.startsWith('/review')) {
             setActiveView('summary');
         }
         else if (trimmed.startsWith('/memory')) {
             setActiveView('memory');
+        }
+        else if (trimmed.startsWith('/benchmark') || trimmed.startsWith('/eval')) {
+            setActiveView('benchmark');
         }
         else if (trimmed.startsWith('/intake')) {
             setActiveView('intake');
@@ -60,6 +64,8 @@ export const Layout = ({ session, onCommandSubmit, intakeSteps, intakeReady, tas
                 return _jsx(ReviewerSummaryView, {});
             case 'memory':
                 return _jsx(MemoryInspectView, {});
+            case 'benchmark':
+                return _jsx(BenchmarkView, {});
             default:
                 return _jsx(IntakeView, { steps: intakeSteps, ready: intakeReady });
         }

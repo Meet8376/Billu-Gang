@@ -1,7 +1,7 @@
 import React from 'react';
 import { IntakeStep } from './views/IntakeView.js';
 import { SessionInfo, TaskGraphNode } from '../api/apiTypes.js';
-export type ActiveView = 'intake' | 'graph' | 'diff' | 'trace' | 'summary' | 'memory';
+export type ActiveView = 'intake' | 'graph' | 'diff' | 'trace' | 'summary' | 'memory' | 'benchmark';
 interface LayoutProps {
     session: SessionInfo;
     onCommandSubmit: (cmd: string) => void;

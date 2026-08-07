@@ -19,6 +19,9 @@ npm run dev
 
 # Or run via compiled executable
 node dist/index.js init --repo . --model claude-3-5-sonnet
+
+# Run automated presentation demo (MVD FR37-FR42)
+node dist/index.js demo
 ```
 
 ### Running Tests
@@ -38,21 +41,26 @@ npm test
 | `/trace` or `/logs` | `TraceView` | Renders real-time test execution logs and verification runner. |
 | `/summary` | `ReviewerSummaryView` | Renders patch proof, total cost, remaining uncertainty, and rollback path. |
 | `/memory` | `MemoryInspectView` | Displays visual browser for 7 tiered memory tiers with provenance metadata. |
+| `/benchmark` | `BenchmarkView` | Renders multi-task batch evaluation progress table & Δ pass rate lift. |
 | `/rollback` | Action Trigger | Reverts target repo workspace to pre-run snapshot. |
 
 ---
 
 ## 3. Keyboard Navigation Shortcuts
 
-- **`Tab`**: Cycle sequentially across the 6 active display views.
-- **`Esc`**: Pause active run session.
+- **`Tab`**: Cycle sequentially across the 7 active display views.
+- **`↑ / ↓` Arrow Keys**: Navigate task graph nodes in `TaskGraphView`.
+- **`← / →` Arrow Keys**: Navigate file patch tabs in `DiffView` and memory tiers in `MemoryInspectView`.
 - **`y` / `n`**: Respond to `<ApprovalPrompt />` safety confirmation popups.
+- **`Esc`**: Pause active run session.
 - **`Enter`**: Submit task prompt or slash command.
 
 ---
 
-## 4. Subsystem Integration Points
+## 4. Subsystem Integration & Architecture
 
 - **FastAPI REST Client:** `src/api/BackendApiClient.ts` -> targets `http://localhost:8000/api/v1`
 - **SSE Stream Listener:** `src/sse/SSEClient.ts` -> targets `http://localhost:8000/api/v1/events`
+- **SSE Stream Event Handler:** `src/sse/sseStreamHandler.ts`
 - **Zod Runtime Event Validation:** `src/sse/sseTypes.ts`
+- **Automated Demo Runner:** `src/utils/demoRunner.ts`

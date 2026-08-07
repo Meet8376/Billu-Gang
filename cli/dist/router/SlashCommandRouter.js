@@ -23,9 +23,16 @@ export class SlashCommandRouter {
             case 'logs':
             case 'events':
                 return { type: 'trace', rawInput: input, commandName, args, filterArg };
+            case 'summary':
+            case 'review':
+                return { type: 'summary', rawInput: input, commandName, args, filterArg };
             case 'memory':
             case 'context':
                 return { type: 'memory', rawInput: input, commandName, args, filterArg };
+            case 'benchmark':
+            case 'eval':
+            case 'ablation':
+                return { type: 'benchmark', rawInput: input, commandName, args, filterArg };
             case 'rollback':
             case 'revert':
                 return { type: 'rollback', rawInput: input, commandName, args, filterArg };
@@ -52,7 +59,9 @@ export class SlashCommandRouter {
             '/graph',
             '/diff',
             '/trace',
+            '/summary',
             '/memory',
+            '/benchmark',
             '/rollback',
             '/pause',
             '/help'

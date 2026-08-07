@@ -10,9 +10,10 @@ import { DiffView } from './views/DiffView.js';
 import { TraceView } from './views/TraceView.js';
 import { ReviewerSummaryView } from './views/ReviewerSummaryView.js';
 import { MemoryInspectView } from './views/MemoryInspectView.js';
+import { BenchmarkView } from './views/BenchmarkView.js';
 import { SessionInfo, TaskGraphNode } from '../api/apiTypes.js';
 
-export type ActiveView = 'intake' | 'graph' | 'diff' | 'trace' | 'summary' | 'memory';
+export type ActiveView = 'intake' | 'graph' | 'diff' | 'trace' | 'summary' | 'memory' | 'benchmark';
 
 interface LayoutProps {
   session: SessionInfo;
@@ -47,7 +48,7 @@ export const Layout: React.FC<LayoutProps> = ({
   // Keyboard navigation across view tabs using Tab key
   useInput((input, key) => {
     if (key.tab) {
-      const views: ActiveView[] = ['intake', 'graph', 'diff', 'trace', 'summary', 'memory'];
+      const views: ActiveView[] = ['intake', 'graph', 'diff', 'trace', 'summary', 'memory', 'benchmark'];
       const currentIndex = views.indexOf(currentView);
       const nextIndex = (currentIndex + 1) % views.length;
       setActiveView(views[nextIndex]);
@@ -62,10 +63,12 @@ export const Layout: React.FC<LayoutProps> = ({
       setActiveView('diff');
     } else if (trimmed.startsWith('/trace') || trimmed.startsWith('/logs')) {
       setActiveView('trace');
-    } else if (trimmed.startsWith('/summary')) {
+    } else if (trimmed.startsWith('/summary') || trimmed.startsWith('/review')) {
       setActiveView('summary');
     } else if (trimmed.startsWith('/memory')) {
       setActiveView('memory');
+    } else if (trimmed.startsWith('/benchmark') || trimmed.startsWith('/eval')) {
+      setActiveView('benchmark');
     } else if (trimmed.startsWith('/intake')) {
       setActiveView('intake');
     }
@@ -86,6 +89,8 @@ export const Layout: React.FC<LayoutProps> = ({
         return <ReviewerSummaryView />;
       case 'memory':
         return <MemoryInspectView />;
+      case 'benchmark':
+        return <BenchmarkView />;
       default:
         return <IntakeView steps={intakeSteps} ready={intakeReady} />;
     }
