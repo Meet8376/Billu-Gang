@@ -2,15 +2,16 @@
 Repo Intelligence & Tiered Memory Engine
 
 This package provides repository analysis, tiered memory management,
-and context assembly for the AE-01 Unified Agentic Coding Harness.
+context assembly, memory ablations, and initialization tools for the AE-01 Unified Agentic Coding Harness.
 
 Primary surfaces:
-- Repository Intelligence: AST parsing, symbol indexing, call graphs
-- Tiered Memory: Working, Task, Project, Episodic, Procedural, Preference, Evidence
-- Context Manager: Token-budgeted context assembly with relevance ranking and sanitization
+- Repository Intelligence: AST parsing, symbol indexing, call graphs, incremental indexer
+- Tiered Memory: Working, Task, Project, Episodic, Procedural, Preference, Evidence, Memory Ablations
+- Context Manager: Token-budgeted context assembly, relevance ranking, sanitization, latency profiler
+- Database Init: Fresh database initialization script (`initialize_harness_repo_memory`)
 """
 
-__version__ = "0.3.0"  # Phase 3 complete
+__version__ = "1.0.0"  # Complete 6-Phase Deliverable
 
 # Database exports
 from .db import (
@@ -20,6 +21,7 @@ from .db import (
     MemoryItemModel,
     SymbolIndexModel,
     CallGraphEdgeModel,
+    initialize_harness_repo_memory,
 )
 
 # Indexer exports
@@ -32,6 +34,7 @@ from .indexer import (
     TestMapper,
     GitInspector,
     GitInspectorError,
+    IncrementalIndexer,
 )
 
 # Memory exports
@@ -45,6 +48,8 @@ from .memory import (
     MemoryExporter,
     export_memory_tier,
     import_memory,
+    MemoryAblationController,
+    MemoryAblationMode,
 )
 
 # Context exports
@@ -56,6 +61,7 @@ from .context import (
     summarize_file,
     Sanitizer,
     sanitize_prompt_text,
+    ContextLatencyProfiler,
 )
 
 __all__ = [
@@ -66,6 +72,7 @@ __all__ = [
     "MemoryItemModel",
     "SymbolIndexModel",
     "CallGraphEdgeModel",
+    "initialize_harness_repo_memory",
     # Indexer
     "scan_repository",
     "FileScanner",
@@ -75,6 +82,7 @@ __all__ = [
     "TestMapper",
     "GitInspector",
     "GitInspectorError",
+    "IncrementalIndexer",
     # Memory
     "TieredMemoryStore",
     "ProvenanceRecord",
@@ -85,6 +93,8 @@ __all__ = [
     "MemoryExporter",
     "export_memory_tier",
     "import_memory",
+    "MemoryAblationController",
+    "MemoryAblationMode",
     # Context
     "ContextManager",
     "RelevanceRanker",
@@ -93,4 +103,5 @@ __all__ = [
     "summarize_file",
     "Sanitizer",
     "sanitize_prompt_text",
+    "ContextLatencyProfiler",
 ]

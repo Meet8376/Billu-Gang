@@ -1,0 +1,4 @@
+# Database Migrations (Alembic)
+
+This directory contains database migration scripts for `harness.db` (SQLite)
+to handle schema evolution across version updates.
