@@ -29,6 +29,10 @@ from backend.verification.benchmarking.ablation_protocol import (
     AblationVariantResult,
     AblationMatrixReport,
 )
+from backend.verification.benchmarking.demo_script import (
+    VerificationDemo,
+    run_pitch_demonstration,
+)
 
 __all__ = [
     "SampleBugRepo",
@@ -47,4 +51,6 @@ __all__ = [
     "AblationProtocolEngine",
     "AblationVariantResult",
     "AblationMatrixReport",
+    "VerificationDemo",
+    "run_pitch_demonstration",
 ]

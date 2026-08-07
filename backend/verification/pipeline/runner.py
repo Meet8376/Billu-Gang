@@ -148,8 +148,25 @@ class VerificationPipeline:
             report_file = Path(workspace_path) / "report.xml"
             if report_file.exists():
                 summary = parse_pytest_xml(str(report_file))
-            else:
+            elif raw_combined.strip().startswith("<") or "<?xml" in raw_combined:
                 summary = parse_pytest_xml(raw_combined)
+            else:
+                import re
+                m_pass = re.search(r"(\d+)\s+passed", raw_combined)
+                m_fail = re.search(r"(\d+)\s+failed", raw_combined)
+                passed_cnt = int(m_pass.group(1)) if m_pass else 0
+                failed_cnt = int(m_fail.group(1)) if m_fail else 0
+
+                if passed_cnt > 0 and failed_cnt == 0:
+                    summary = TestRunSummary(
+                        framework="pytest_text",
+                        passed=passed_cnt,
+                        failed=0,
+                        total=passed_cnt,
+                        raw_output=raw_combined,
+                    )
+                else:
+                    summary = parse_pytest_xml(raw_combined)
         elif framework == "npm":
             summary = parse_npm_test(raw_combined)
         else:

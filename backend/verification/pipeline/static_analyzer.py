@@ -94,7 +94,7 @@ class StaticAnalyzer:
         issues: List[AnalysisIssue] = []
         for line in output_str.splitlines():
             line_str = line.strip()
-            if not line_str or ":" not in line_str or "Success:" in line_str:
+            if not line_str or ":" not in line_str or "Success:" in line_str or ": note:" in line_str:
                 continue
             parts = line_str.split(":", 3)
             if len(parts) >= 3:
