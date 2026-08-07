@@ -26,6 +26,12 @@ from backend.verification.pipeline.reviewer_engine import (
     ReviewerSummary,
     ReviewerEngine,
 )
+from backend.verification.pipeline.failure_injector import (
+    InjectedFailureScenario,
+    RegressionReport,
+    FailureInjector,
+    RegressionRunner,
+)
 
 __all__ = [
     "TestResultStatus",
@@ -43,4 +49,8 @@ __all__ = [
     "VerificationPipeline",
     "ReviewerSummary",
     "ReviewerEngine",
+    "InjectedFailureScenario",
+    "RegressionReport",
+    "FailureInjector",
+    "RegressionRunner",
 ]
