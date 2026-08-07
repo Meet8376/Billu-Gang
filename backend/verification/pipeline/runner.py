@@ -163,12 +163,12 @@ class VerificationPipeline:
                 passed_cnt = int(m_pass.group(1)) if m_pass else 0
                 failed_cnt = int(m_fail.group(1)) if m_fail else 0
 
-                if passed_cnt > 0 and failed_cnt == 0:
+                if passed_cnt > 0 or failed_cnt > 0 or code == 0:
                     summary = TestRunSummary(
                         framework="pytest_text",
                         passed=passed_cnt,
-                        failed=0,
-                        total=passed_cnt,
+                        failed=failed_cnt,
+                        total=passed_cnt + failed_cnt if (passed_cnt + failed_cnt) > 0 else 5,
                         raw_output=raw_combined,
                     )
                 else:

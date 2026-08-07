@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="2" failures="0" skipped="0" tests="2" time="0.446" timestamp="2026-08-07T20:02:29.234848+00:00" hostname="ab85ddd77f69"><testcase classname="" name="todo-app.tests.test_storage" time="0.000"><error message="collection failure">ImportError while importing test module '/workspace/todo-app/tests/test_storage.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+/usr/local/lib/python3.11/importlib/__init__.py:126: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+todo-app/tests/test_storage.py:1: in &lt;module&gt;
+    from utils import count_completed
+E   ModuleNotFoundError: No module named 'utils'</error></testcase><testcase classname="" name="todo-app.tests.test_todo" time="0.000"><error message="collection failure">ImportError while importing test module '/workspace/todo-app/tests/test_todo.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+/usr/local/lib/python3.11/importlib/__init__.py:126: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+todo-app/tests/test_todo.py:1: in &lt;module&gt;
+    from todo import TodoManager
+E   ModuleNotFoundError: No module named 'todo'</error></testcase></testsuite></testsuites>

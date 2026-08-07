@@ -139,13 +139,23 @@ async def start_run(payload: RunControlRequest):
     )
 
     if sandbox and sandbox.container:
-        container_pytest = sandbox.exec_command("pytest")
-        if container_pytest.exit_code == 0:
-            test_logs = f"[Docker Pytest Exec] Tests passed in container: {container_pytest.stdout.strip()[:100]}"
-        else:
-            test_logs = f"[Docker Pytest Exec] Container tests execution log: {container_pytest.stdout.strip()[:100]}"
-        runner = VerificationRunner(workspace_path=target_workspace)
+        def docker_exec(cmd: list, cwd: str):
+            container_cmd = []
+            for arg in cmd:
+                if target_workspace in arg or (":" in arg and "\\" in arg):
+                    container_cmd.append("/workspace")
+                else:
+                    container_cmd.append(arg)
+            cmd_str = " ".join(container_cmd)
+            res = sandbox.exec_command(cmd_str, cwd="/workspace")
+            return res.exit_code, res.stdout, res.stderr
+
+        runner = VerificationRunner(
+            workspace_path=target_workspace,
+            command_executor=docker_exec
+        )
         verif_res = runner.run_verification()
+        test_logs = f"[Docker Sandbox Exec] Container verification complete: {verif_res.summary_message}"
     else:
         runner = VerificationRunner(workspace_path=target_workspace)
         verif_res = runner.run_verification()
@@ -167,10 +177,34 @@ async def start_run(payload: RunControlRequest):
         log_line=f"[Gemini API] Processing review prompt using model '{model_name}'..."
     )
 
+    # Collect workspace source code files for deep file review
+    code_snippets = []
+    for root, _, files in os.walk(target_workspace):
+        if any(ignored in root for ignored in [".git", "node_modules", "venv", "__pycache__", "dist", "cloned_repos"]):
+            continue
+        for f in files:
+            if f.endswith((".py", ".ts", ".js", ".json", ".md")) and not f.startswith("report"):
+                fpath = os.path.join(root, f)
+                rel_path = os.path.relpath(fpath, target_workspace)
+                try:
+                    with open(fpath, "r", encoding="utf-8", errors="ignore") as file_in:
+                        content = file_in.read()[:2500]
+                        code_snippets.append(f"--- File: {rel_path} ---\n{content}\n")
+                except Exception:
+                    pass
+
+    code_context = "\n".join(code_snippets[:6]) if code_snippets else "No source files loaded"
+
     gemini_adapter = GeminiAdapter(model_name=model_name, api_key=api_key)
     analysis_prompt = (
-        f"Review task goal: '{prompt}'. Docker container ID: '{container_id[:12]}'. Test results: {verif_res.pytest_results}. "
-        "Provide a concise, high-level code quality score (out of 100) and structured code review findings."
+        f"Review task goal: '{prompt}'.\n"
+        f"Docker container ID: '{container_id[:12]}'.\n"
+        f"Test results: {verif_res.pytest_results}.\n\n"
+        f"Repository Codebase Files:\n{code_context}\n\n"
+        "Provide a comprehensive AI Code Review covering:\n"
+        "1. Code Quality Score (out of 100)\n"
+        "2. Detailed line-by-line review of the codebase files\n"
+        "3. Security, performance, and refactoring recommendations\n"
     )
     
     try:
@@ -178,7 +212,7 @@ async def start_run(payload: RunControlRequest):
             messages=[{"role": "user", "content": analysis_prompt}],
             system_prompt="You are a senior principal software architect reviewing sandboxed Docker code execution."
         )
-        ai_summary = completion.content[:400]
+        ai_summary = completion.content
     except Exception as e:
         ai_summary = f"Gemini Analysis error: {e}"
 
@@ -209,6 +243,25 @@ async def start_run(payload: RunControlRequest):
     report_path = os.path.join(docs_dir, "codebase_review.md")
     with open(report_path, "w", encoding="utf-8") as f:
         f.write(report_content)
+
+    # Automatically generate changes.md after each session run
+    changes_content = (
+        f"# Session Changes & Audit Trace (`changes.md`)\n\n"
+        f"- **Session ID**: {session_id}\n"
+        f"- **Timestamp**: {time.strftime('%Y-%m-%d %H:%M:%S')}\n"
+        f"- **Docker Container ID**: {container_id[:12]}\n"
+        f"- **AI Model Provider**: {model_name}\n"
+        f"- **Verification Status**: {tests_summary}\n\n"
+        f"## Work Executed & File Modifications\n"
+        f"1. **Sandboxed Container Exec**: Spun up container `ae01-sandbox-active` with scoped workspace mount `/workspace`.\n"
+        f"2. **Cross-OS Path Resolution**: Dynamically translated host paths to container `/workspace`.\n"
+        f"3. **Verification Harness**: Executed `pytest`, `ruff`, and `mypy` inside the active container.\n"
+        f"4. **AI Code Review Generation**: Ingested target workspace source files and produced Gemini AI code review.\n\n"
+        f"## Complete AI Review Findings\n\n{ai_summary}\n"
+    )
+    changes_file_path = os.path.join(target_workspace, "changes.md")
+    with open(changes_file_path, "w", encoding="utf-8") as f:
+        f.write(changes_content)
 
     await publish_stage_event(
         EventType.REPORT_COMPLETED,

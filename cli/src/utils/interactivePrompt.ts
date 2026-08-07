@@ -60,7 +60,7 @@ export async function runInteractiveStartup(flags: Partial<StartupConfig>): Prom
   console.log('\x1b[36m=========================================================\x1b[0m\n');
 
   // 1. Repository URL
-  let repoUrl = flags.repoUrl || process.env.REPO_URL || '';
+  let repoUrl = flags.repoUrl || '';
   while (!repoUrl) {
     repoUrl = await promptText('\x1b[33m? Enter Git Repository URL\x1b[0m', '');
     if (!repoUrl) {
@@ -72,6 +72,10 @@ export async function runInteractiveStartup(flags: Partial<StartupConfig>): Prom
   let branch = flags.branch || 'main';
   if (!flags.branch) {
     branch = await promptText('\x1b[33m? Enter Target Branch Name\x1b[0m', 'main');
+    if (branch.startsWith('AIzaSy') || branch.startsWith('sk-') || branch.length > 25) {
+      console.log('\x1b[33m  [Notice] Detected API key in branch field. Defaulting branch to "main".\x1b[0m');
+      branch = 'main';
+    }
   }
 
   // 3. AI Model Provider Choice (All models included, Gemini is gemini-3.5-flash-lite)

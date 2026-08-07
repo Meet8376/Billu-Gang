@@ -21,7 +21,11 @@ export interface AppProps {
 
 function scanTargetRepoFiles(repoPath: string): { files: string[]; targetPath: string; folderName: string } {
   try {
-    const absPath = path.resolve(repoPath);
+    const absPath = path.isAbsolute(repoPath)
+      ? repoPath
+      : fs.existsSync(path.resolve(process.cwd(), repoPath))
+        ? path.resolve(process.cwd(), repoPath)
+        : path.resolve(process.cwd(), '..', repoPath);
     const folderName = path.basename(absPath);
     const found: string[] = [];
     const scanDir = (dir: string, depth: number = 0) => {

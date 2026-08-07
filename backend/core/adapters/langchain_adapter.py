@@ -3,6 +3,7 @@ LangChain Unified Model Adapter Implementation.
 Member 2 — Backend Core & Model Adapter Lead
 """
 
+import os
 from typing import AsyncGenerator, Dict, Any, List, Optional
 from langchain_core.language_models.chat_models import BaseChatModel
 from backend.core.adapters.base import ModelAdapter, CompletionResponse, ToolCallData
