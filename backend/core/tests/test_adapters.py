@@ -4,9 +4,10 @@ Member 2 — Backend Core & Model Adapter Lead
 """
 
 import pytest
-from backend.core.adapters import LangChainAdapter, LangGraphAdapter, MockAdapter, ToolCallData
+from backend.core.adapters import LangChainAdapter, LangGraphAdapter, GeminiAdapter, MockAdapter, ToolCallData
 
 pytestmark = pytest.mark.asyncio
+
 
 
 async def test_langchain_adapter_completion_stub():
@@ -45,3 +46,11 @@ async def test_mock_adapter_custom_tool_calls():
     resp = await adapter.complete(messages=[{"role": "user", "content": "Find main"}])
     assert resp.content == "Mocked completion"
     assert resp.tool_calls[0].name == "search_code"
+
+
+async def test_gemini_adapter_integration():
+    adapter = GeminiAdapter(model_name="gemini-1.5-pro")
+    resp = await adapter.complete(messages=[{"role": "user", "content": "Test Gemini adapter integration"}])
+    assert resp.model_name == "gemini-1.5-pro"
+    assert resp.content is not None
+

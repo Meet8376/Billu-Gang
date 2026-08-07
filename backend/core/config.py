@@ -25,6 +25,8 @@ class Settings(BaseSettings):
     # API Keys & Provider Config
     ANTHROPIC_API_KEY: Optional[str] = None
     OPENAI_API_KEY: Optional[str] = None
+    GEMINI_API_KEY: Optional[str] = None
+    GOOGLE_API_KEY: Optional[str] = None
     DEFAULT_MODEL: str = "gpt-4o"
     FALLBACK_MODEL: str = "gpt-4o-mini"
 

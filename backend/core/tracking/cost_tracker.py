@@ -16,6 +16,10 @@ MODEL_PRICING: Dict[str, Dict[str, float]] = {
     "gpt-4o-mini": {"input": 0.00015, "output": 0.0006},
     "claude-3-5-sonnet-20241022": {"input": 0.003, "output": 0.015},
     "claude-3-5-haiku-20241022": {"input": 0.0008, "output": 0.004},
+    "gemini-1.5-pro": {"input": 0.00125, "output": 0.005},
+    "gemini-1.5-flash": {"input": 0.000075, "output": 0.0003},
+    "gemini-2.0-flash": {"input": 0.0001, "output": 0.0004},
+    "gemini-pro": {"input": 0.0005, "output": 0.0015},
     "mock-model": {"input": 0.0, "output": 0.0},
     "default": {"input": 0.0025, "output": 0.010},
 }
