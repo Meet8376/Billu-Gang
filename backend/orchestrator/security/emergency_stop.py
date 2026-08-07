@@ -6,7 +6,7 @@ when a user triggers Ctrl+C, /pause, or an emergency abort request.
 
 import logging
 import threading
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Tuple
 from backend.orchestrator.sandbox.docker_manager import DockerSandbox
 
 logger = logging.getLogger(__name__)
@@ -24,6 +24,7 @@ class EmergencyStopManager:
                 cls._instance = super().__new__(cls)
                 cls._instance._sandboxes: Dict[str, DockerSandbox] = {}
                 cls._instance._stop_requested = False
+                cls._instance._paused = False
             return cls._instance
 
     def register_sandbox(self, sandbox_id: str, sandbox: DockerSandbox) -> None:
@@ -42,11 +43,28 @@ class EmergencyStopManager:
         """Checks if an emergency stop signal has been issued."""
         return self._stop_requested
 
+    def is_paused(self) -> bool:
+        """Checks if execution is currently paused by /pause command."""
+        return self._paused
+
+    def pause_execution(self) -> None:
+        """Pauses active task orchestrator execution graph (/pause route)."""
+        with self._lock:
+            self._paused = True
+            logger.info("Task orchestrator execution PAUSED by user request")
+
+    def resume_execution(self) -> None:
+        """Resumes active task orchestrator execution graph."""
+        with self._lock:
+            self._paused = False
+            logger.info("Task orchestrator execution RESUMED")
+
     def trigger_emergency_stop(self, sandbox_id: Optional[str] = None) -> int:
         """Instantly terminates specified sandbox or all active sandboxes (SIGKILL)."""
         stopped_count = 0
         with self._lock:
             self._stop_requested = True
+            self._paused = False
             targets: List[Tuple[str, DockerSandbox]] = []
 
             if sandbox_id:
@@ -74,6 +92,7 @@ class EmergencyStopManager:
         """Resets emergency stop status flags."""
         with self._lock:
             self._stop_requested = False
+            self._paused = False
             self._sandboxes.clear()
 
 
