@@ -52,6 +52,21 @@ export interface ReviewerSummary {
   rollbackCommand: string;
 }
 
+export interface IntakeStep {
+  id: string;
+  step: string;
+  completed: boolean;
+  running?: boolean;
+  detail?: string;
+}
+
+export interface StageStatus {
+  id: string;
+  name: string;
+  status: 'pending' | 'running' | 'completed' | 'failed';
+  detail?: string;
+}
+
 export interface MemoryItem {
   id: string;
   tier: 'working' | 'task' | 'project' | 'episodic' | 'procedural' | 'preference' | 'evidence';
@@ -60,3 +75,4 @@ export interface MemoryItem {
   invalidationRule?: string;
   createdAt: string;
 }
+

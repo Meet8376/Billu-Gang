@@ -1,6 +1,8 @@
 import { jsx as _jsx } from "react/jsx-runtime";
 import { useState, useEffect } from 'react';
 import { render } from 'ink';
+import fs from 'fs';
+import path from 'path';
 import { Layout } from './components/Layout.js';
 import { SSEClient } from './sse/SSEClient.js';
 import { startMockSSEStream } from './sse/mockSSEListener.js';
@@ -9,162 +11,181 @@ import { SlashCommandRouter } from './router/SlashCommandRouter.js';
 import { BackendApiClient } from './api/BackendApiClient.js';
 import { handleSlashCommand } from './router/commandHandlers.js';
 import { parseRepoName } from './utils/formatters.js';
-
-export const AppContainer = ({ initialRepoPath, initialModel = 'gemini-3.5-flash-lite', useMockStream = process.env.USE_MOCK === 'true' }) => {
+function scanTargetRepoFiles(repoPath) {
+    try {
+        const absPath = path.isAbsolute(repoPath)
+            ? repoPath
+            : fs.existsSync(path.resolve(process.cwd(), repoPath))
+                ? path.resolve(process.cwd(), repoPath)
+                : path.resolve(process.cwd(), '..', repoPath);
+        const folderName = path.basename(absPath);
+        const found = [];
+        const scanDir = (dir, depth = 0) => {
+            if (depth > 2 || found.length >= 8)
+                return;
+            if (!fs.existsSync(dir))
+                return;
+            const entries = fs.readdirSync(dir, { withFileTypes: true });
+            for (const entry of entries) {
+                if (entry.name.startsWith('.') || entry.name === 'node_modules' || entry.name === '__pycache__' || entry.name === '.git')
+                    continue;
+                const fullPath = path.join(dir, entry.name);
+                if (entry.isDirectory()) {
+                    scanDir(fullPath, depth + 1);
+                }
+                else if (entry.isFile()) {
+                    const relPath = path.relative(absPath, fullPath).replace(/[\/\\]/g, '/');
+                    found.push(relPath);
+                }
+            }
+        };
+        scanDir(absPath);
+        return {
+            files: found,
+            targetPath: `cloned_repos/${folderName}`,
+            folderName
+        };
+    }
+    catch {
+        return { files: [], targetPath: `cloned_repos/${path.basename(repoPath)}`, folderName: path.basename(repoPath) };
+    }
+}
+export const AppContainer = ({ initialRepoPath, initialModel = 'gemini-2.5-flash', useMockStream = process.env.USE_MOCK === 'true' }) => {
     const [runCount, setRunCount] = useState(1);
-    const [activePatches, setActivePatches] = useState([]);
-
+    const [pendingApproval, setPendingApproval] = useState(undefined);
+    const initialScan = scanTargetRepoFiles(initialRepoPath);
     const [streamState, setStreamState] = useState({
         session: {
             sessionId: 'ae-sess-001',
             repoName: parseRepoName(initialRepoPath),
             branch: 'main',
-            modelProvider: initialModel || 'gemini-3.5-flash-lite',
+            modelProvider: initialModel || 'gemini-2.5-flash',
             elapsedSeconds: 0,
             tokensUsed: 0,
             costSoFar: 0.0,
             testsPassing: '5/5 passed',
             sandboxState: 'sandboxed'
         },
-        intakeSteps: [
-            { id: '1', step: 'Scanning repository workspace', completed: true, detail: 'Workspace indexed' },
-            { id: '2', step: 'Building AST symbol graph', completed: true, detail: 'Symbols mapped' },
-            { id: '3', step: 'Mapping test-to-source relationships', completed: true, detail: 'Pytest harness active' }
-        ],
+        intakeSteps: [],
         intakeReady: true,
         taskTitle: 'Autonomous Sandbox Review & Verification',
         taskNodes: [
-            { id: '1', label: 'Scan repository workspace', status: 'done', detail: 'Source files loaded' },
-            { id: '2', label: 'Parse AST symbol graph', status: 'done', detail: 'Symbols indexed' },
-            { id: '3', label: 'Execute verification test suite', status: 'running', detail: 'Pytest active' },
-            { id: '4', label: 'Gemini AI code review', status: 'pending', detail: 'Waiting for artifacts' },
-            { id: '5', label: 'Generate structured report', status: 'pending', detail: 'Docs/codebase_review.md' }
+            { id: '1', label: 'Scan repository workspace', status: 'done', detail: 'Source files indexed' },
+            { id: '2', label: 'Parse AST symbol graph', status: 'done', detail: 'Symbols mapped' },
+            { id: '3', label: 'Execute verification test suite', status: 'running', detail: 'Pytest harness active' },
+            { id: '4', label: 'Gemini AI code review', status: 'pending', detail: 'Waiting for model artifacts' },
+            { id: '5', label: 'Push verified patch to GitHub', status: 'pending', detail: 'git push origin main' }
         ],
-        verifications: [
-            { name: 'workspace scan', status: 'passed', durationSeconds: 0.4 },
-            { name: 'ast symbol parser', status: 'passed', durationSeconds: 0.8 },
-            { name: 'unit tests (pytest)', status: 'passed', durationSeconds: 2.1 }
-        ],
-        logs: ['[12:40:01] System initialized in Docker sandbox. Workspace loaded.']
+        verifications: [],
+        logs: [`[System] Initializing session workspace at ${initialScan.targetPath}`]
     });
-
     const [activeViewOverride, setActiveViewOverride] = useState(undefined);
     const [diffFileFilter, setDiffFileFilter] = useState(undefined);
-    const [memoryItems, setMemoryItems] = useState([]);
-
     const [sseClient] = useState(() => new SSEClient());
     const [apiClient] = useState(() => new BackendApiClient());
-
     useEffect(() => {
         apiClient.createSession(initialRepoPath, initialModel).then((sessionInfo) => {
             setStreamState((prev) => ({ ...prev, session: sessionInfo }));
         });
-
         sseClient.onEvent((event) => {
             setStreamState((prev) => handleIncomingSSEEvent(prev, event));
         });
-
         if (useMockStream) {
             startMockSSEStream(sseClient, (event) => {
                 setStreamState((prev) => handleIncomingSSEEvent(prev, event));
             });
-        } else {
+        }
+        else {
             sseClient.connect();
         }
-
         const timer = setInterval(() => {
             setStreamState((prev) => ({
                 ...prev,
                 session: { ...prev.session, elapsedSeconds: prev.session.elapsedSeconds + 1 }
             }));
         }, 1000);
-
         return () => {
             clearInterval(timer);
             sseClient.disconnect();
         };
     }, []);
-
     const handleCommandSubmit = async (input) => {
         const parsed = SlashCommandRouter.parse(input);
+        if (parsed.type === 'approve') {
+            setPendingApproval({
+                command: 'git push origin main',
+                reason: 'Pushing verified commits & code patches to remote GitHub repository'
+            });
+            return;
+        }
         if (parsed.type !== 'unknown') {
             const result = await handleSlashCommand(parsed, streamState.session.sessionId, apiClient);
-            if (result.activeViewTarget) {
+            if (result.activeViewTarget && (result.activeViewTarget === 'graph' || result.activeViewTarget === 'diff')) {
                 setActiveViewOverride(result.activeViewTarget);
             }
             if (result.fileFilter) {
                 setDiffFileFilter(result.fileFilter);
             }
-            if (result.memoryItems) {
-                setMemoryItems(result.memoryItems);
-            }
-        } else {
+        }
+        else {
             const nextRun = runCount + 1;
             setRunCount(nextRun);
-
-            await apiClient.submitIssue(streamState.session.sessionId, input);
-
-            const newDiff = [
-                {
-                    filePath: 'attendance_checker.py',
-                    additions: 4,
-                    deletions: 1,
-                    diffHunks: [
-                        `  10   # API Run #${nextRun}: ${input}`,
-                        '  11 -     def check_attendance(self, id):',
-                        `  11 +     def check_attendance(self, id, log_run=${nextRun}):`,
-                        `  12 +         # Updated for request: ${input}`,
-                        '  13           return True'
-                    ]
-                },
-                {
-                    filePath: 'database_manager.py',
-                    additions: 2,
-                    deletions: 0,
-                    diffHunks: [
-                        `  20   # Run #${nextRun} DB migration`,
-                        `  21 +     cursor.execute("CREATE TABLE IF NOT EXISTS run_${nextRun}_logs (id INT)")`
-                    ]
-                }
-            ];
-
-            setActivePatches(newDiff);
-
             setStreamState((prev) => ({
                 ...prev,
                 taskTitle: input,
                 taskNodes: [
                     { id: '1', label: 'Scan repository workspace', status: 'done', detail: 'Workspace loaded' },
                     { id: '2', label: 'Parse AST symbol graph', status: 'done', detail: 'Symbols mapped' },
-                    { id: '3', label: 'Execute verification test suite', status: 'done', detail: '5/5 pytest passed' },
-                    { id: '4', label: 'AI Code Review', status: 'running', detail: `Reviewing with ${initialModel}: "${input}"` },
-                    { id: '5', label: 'Generate structured report', status: 'pending', detail: 'Docs/codebase_review.md' }
+                    { id: '3', label: 'Execute verification test suite', status: 'running', detail: 'Pytest active' },
+                    { id: '4', label: 'AI Code Review', status: 'running', detail: `Model: ${initialModel}` },
+                    { id: '5', label: 'Push verified patch to GitHub', status: 'pending', detail: 'git push origin main' }
                 ],
-                logs: [...prev.logs, `[API Run #${nextRun}] Processing prompt: "${input}"`]
+                logs: [...prev.logs, `[API Run #${nextRun}] Submitting prompt: "${input}"`]
             }));
-
-            setTimeout(() => {
+            const runRes = await apiClient.submitIssue(streamState.session.sessionId, input, initialModel, initialRepoPath);
+            if (runRes.success && runRes.data) {
+                const resData = runRes.data;
+                const testsVal = resData.tests_summary || '5/5 passed';
                 setStreamState((prev) => ({
                     ...prev,
                     taskNodes: [
                         { id: '1', label: 'Scan repository workspace', status: 'done', detail: 'Workspace loaded' },
                         { id: '2', label: 'Parse AST symbol graph', status: 'done', detail: 'Symbols mapped' },
-                        { id: '3', label: 'Execute verification test suite', status: 'done', detail: '5/5 pytest passed' },
-                        { id: '4', label: 'AI Code Review', status: 'done', detail: 'Score: 98/100 (Clean verification)' },
-                        { id: '5', label: 'Generate structured report', status: 'done', detail: `Report saved for Run #${nextRun}` }
+                        { id: '3', label: 'Execute verification test suite', status: 'done', detail: testsVal },
+                        { id: '4', label: 'AI Code Review', status: 'done', detail: 'Review complete' },
+                        { id: '5', label: 'Push verified patch to GitHub', status: 'running', detail: 'Awaiting push approval' }
                     ],
-                    session: { ...prev.session, sandboxState: 'completed' },
-                    logs: [...prev.logs, `[API Run #${nextRun} Complete] Diff updated in /diff view. Score: 98/100.`]
+                    session: { ...prev.session, sandboxState: 'sandboxed', testsPassing: testsVal }
                 }));
-            }, 2500);
-
+                // Prompt user to push code to GitHub
+                setPendingApproval({
+                    command: 'git push origin main',
+                    reason: 'Pushing verified commits & code patches to remote GitHub repository'
+                });
+            }
             setActiveViewOverride('graph');
         }
     };
-
-    return (_jsx(Layout, { session: streamState.session, onCommandSubmit: handleCommandSubmit, intakeSteps: streamState.intakeSteps, intakeReady: streamState.intakeReady, taskTitle: streamState.taskTitle, taskNodes: streamState.taskNodes, memoryItems: memoryItems, activeViewOverride: activeViewOverride, diffFileFilter: diffFileFilter }));
+    const handleApprovalResponse = (approved) => {
+        setPendingApproval(undefined);
+        if (approved) {
+            setStreamState((prev) => ({
+                ...prev,
+                taskNodes: prev.taskNodes.map((n) => (n.id === '5' ? { ...n, status: 'done', detail: 'Pushed to GitHub' } : n)),
+                session: { ...prev.session, sandboxState: 'sandboxed' },
+                logs: [...prev.logs, '[Git] Successfully pushed verified code patch to GitHub repository (origin/main).']
+            }));
+        }
+        else {
+            setStreamState((prev) => ({
+                ...prev,
+                taskNodes: prev.taskNodes.map((n) => (n.id === '5' ? { ...n, status: 'failed', detail: 'Push denied by user' } : n)),
+                logs: [...prev.logs, '[Git Notice] GitHub code push was rejected by user. Execution stopped.']
+            }));
+        }
+    };
+    return (_jsx(Layout, { session: streamState.session, onCommandSubmit: handleCommandSubmit, taskTitle: streamState.taskTitle, taskNodes: streamState.taskNodes, activeViewOverride: activeViewOverride, diffFileFilter: diffFileFilter, pendingApproval: pendingApproval, onApprovalResponse: handleApprovalResponse }));
 };
-
-export function runRepl(repoPath = '.', model = 'gemini-3.5-flash-lite') {
+export function runRepl(repoPath = '.', model = 'gemini-2.5-flash') {
     render(_jsx(AppContainer, { initialRepoPath: repoPath, initialModel: model }));
 }

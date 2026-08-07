@@ -1,8 +1,5 @@
-import { SSEEvent } from './sseTypes.js';
-import { SessionInfo, TaskGraphNode, VerificationItem } from '../api/apiTypes.js';
-import { IntakeStep } from '../components/views/IntakeView.js';
-
-import { StageStatus } from '../components/views/IntakeView.js';
+    import { SSEEvent } from './sseTypes.js';
+import { SessionInfo, TaskGraphNode, VerificationItem, IntakeStep, StageStatus } from '../api/apiTypes.js';
 
 export interface SSEStreamState {
   session: SessionInfo;

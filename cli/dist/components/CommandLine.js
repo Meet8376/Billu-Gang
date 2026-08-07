@@ -1,7 +1,6 @@
 import { jsxs as _jsxs, jsx as _jsx } from "react/jsx-runtime";
 import { useState } from 'react';
 import { Box, Text, useInput } from 'ink';
-
 export const CommandLine = ({ onSubmit, disabled = false }) => {
     const [input, setInput] = useState('');
     useInput((char, key) => {
@@ -20,5 +19,5 @@ export const CommandLine = ({ onSubmit, disabled = false }) => {
             setInput((prev) => prev + char);
         }
     }, { isActive: true });
-    return (_jsxs(Box, { paddingX: 1, borderStyle: "single", borderColor: "magenta", children: [_jsxs(Text, { color: "magenta", bold: true, children: [">", ' '] }), _jsx(Text, { color: "white", children: input }), _jsx(Text, { color: "magenta", dimColor: true, children: "_" })] }));
+    return (_jsxs(Box, { paddingX: 1, borderStyle: "round", borderColor: "magenta", children: [_jsxs(Text, { color: "yellow", bold: true, children: ["\uD83D\uDC51 ROYAL PROMPT >", ' '] }), _jsx(Text, { color: "white", bold: true, children: input }), _jsx(Text, { color: "yellow", dimColor: true, children: "_" })] }));
 };

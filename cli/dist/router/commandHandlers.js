@@ -1,11 +1,5 @@
 export async function handleSlashCommand(cmd, sessionId, apiClient) {
     switch (cmd.type) {
-        case 'intake':
-            return {
-                handledLocally: true,
-                activeViewTarget: 'intake',
-                feedbackMessage: 'Switched to Repository Intake View.'
-            };
         case 'plan':
             return {
                 handledLocally: true,
@@ -21,46 +15,15 @@ export async function handleSlashCommand(cmd, sessionId, apiClient) {
                     ? `Switched to Diff View (filter: ${cmd.filterArg}).`
                     : 'Switched to Diff View.'
             };
-        case 'trace':
+        case 'approve':
             return {
                 handledLocally: true,
-                activeViewTarget: 'trace',
-                feedbackMessage: 'Switched to Trace View.'
-            };
-        case 'summary':
-            return {
-                handledLocally: true,
-                activeViewTarget: 'summary',
-                feedbackMessage: 'Switched to Reviewer Summary View.'
-            };
-        case 'memory':
-            const items = await apiClient.fetchMemoryItems(sessionId);
-            return {
-                handledLocally: true,
-                activeViewTarget: 'memory',
-                feedbackMessage: `Switched to Memory Inspect View (${items.length} items loaded).`
-            };
-        case 'benchmark':
-            return {
-                handledLocally: true,
-                activeViewTarget: 'benchmark',
-                feedbackMessage: 'Switched to Benchmark Evaluation View.'
-            };
-        case 'rollback':
-            const res = await apiClient.rollbackSession(sessionId);
-            return {
-                handledLocally: true,
-                feedbackMessage: `Rollback: ${res.message}`
-            };
-        case 'pause':
-            return {
-                handledLocally: true,
-                feedbackMessage: 'Session execution paused.'
+                feedbackMessage: 'GitHub push approval requested.'
             };
         case 'help':
             return {
                 handledLocally: true,
-                feedbackMessage: 'Available slash commands: /intake, /plan, /diff [file], /trace, /summary, /memory, /benchmark, /rollback, /pause'
+                feedbackMessage: 'Available commands: /graph, /plan, /diff [file], /approve, /push, /help'
             };
         default:
             return {

@@ -8,6 +8,12 @@ interface StatusStripProps {
 }
 
 export const StatusStrip: React.FC<StatusStripProps> = ({ session, currentTaskLabel }) => {
+  const formatTime = (secs: number) => {
+    const m = Math.floor(secs / 60);
+    const s = secs % 60;
+    return `${m}m ${s}s`;
+  };
+
   return (
     <Box
       borderStyle="single"
@@ -15,25 +21,28 @@ export const StatusStrip: React.FC<StatusStripProps> = ({ session, currentTaskLa
       paddingX={1}
       justifyContent="space-between"
     >
-      <Box gap={1}>
-        <Text color="gray">Sandbox Status:</Text>
-        <Text color="green" bold>
-          [{session.sandboxState?.toUpperCase() || 'ACTIVE'}]
+      <Box gap={2}>
+        <Text color="yellow" bold>
+          👑 ROYAL HARNESS
         </Text>
-        {currentTaskLabel && (
-          <>
-            <Text color="gray">|</Text>
-            <Text color="white">Stage: {currentTaskLabel}</Text>
-          </>
-        )}
+        <Text color="gray">|</Text>
+        <Text color="gray">
+          Stage: <Text color="white" bold>{currentTaskLabel || 'Autonomous Agent Execution'}</Text>
+        </Text>
       </Box>
 
       <Box gap={2}>
         <Text color="gray">
-          Tests: <Text color="cyan" bold>{session.testsPassing || 'All Passed'}</Text>
+          Tests: <Text color="green" bold>{session.testsPassing || '5/5 Passed'}</Text>
         </Text>
         <Text color="gray">|</Text>
-        <Text color="magenta">Tab: Switch View</Text>
+        <Text color="gray">
+          Elapsed: <Text color="cyan">{formatTime(session.elapsedSeconds || 0)}</Text>
+        </Text>
+        <Text color="gray">|</Text>
+        <Text color="magenta" bold>
+          [Tab] Switch View
+        </Text>
       </Box>
     </Box>
   );

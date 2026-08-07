@@ -2,19 +2,17 @@ import { jsx as _jsx, jsxs as _jsxs } from "react/jsx-runtime";
 import { useState } from 'react';
 import { Box, Text, useInput } from 'ink';
 import Spinner from 'ink-spinner';
-import { SYMBOLS } from '../../utils/ansi.js';
-
-export const TaskGraphView = ({ taskTitle, nodes, onSelectNode }) => {
+export const TaskGraphView = ({ taskTitle, nodes, maxVisibleNodes = 8, onSelectNode }) => {
     const [selectedIndex, setSelectedIndex] = useState(0);
-
-    const defaultNodes = nodes && nodes.length > 0 ? nodes : [
-        { id: '1', label: 'Scan repository workspace', status: 'done', detail: '5 source files' },
-        { id: '2', label: 'Parse AST symbol graph', status: 'done', detail: 'Symbols mapped' },
-        { id: '3', label: 'Execute verification test suite', status: 'running', detail: 'Pytest harness active' },
-        { id: '4', label: 'Gemini AI code review', status: 'pending', detail: 'Waiting for artifacts' },
-        { id: '5', label: 'Generate structured report', status: 'pending', detail: 'Docs/codebase_review.md' }
-    ];
-
+    const defaultNodes = nodes && nodes.length > 0
+        ? nodes
+        : [
+            { id: '1', label: 'Scan repository workspace', status: 'done', detail: 'Source files indexed' },
+            { id: '2', label: 'Parse AST symbol graph', status: 'done', detail: 'Symbols & AST mapped' },
+            { id: '3', label: 'Execute verification test suite', status: 'running', detail: 'Pytest harness active' },
+            { id: '4', label: 'Gemini AI code review', status: 'pending', detail: 'Waiting for model artifacts' },
+            { id: '5', label: 'Push verified patch to GitHub', status: 'pending', detail: 'git push origin main' }
+        ];
     useInput((input, key) => {
         if (key.downArrow) {
             setSelectedIndex((prev) => Math.min(prev + 1, defaultNodes.length - 1));
@@ -26,49 +24,31 @@ export const TaskGraphView = ({ taskTitle, nodes, onSelectNode }) => {
             onSelectNode(defaultNodes[selectedIndex]);
         }
     }, { isActive: Boolean(process.stdin && process.stdin.isTTY) });
-
-    const getStatusIcon = (status) => {
+    const getStatusBadge = (status) => {
         switch (status) {
             case 'done':
             case 'completed':
-                return _jsx(Text, { color: "green", children: SYMBOLS.DONE });
+                return _jsx(Text, { color: "green", bold: true, children: "\u2714 Done" });
             case 'running':
-                return (_jsx(Text, { color: "yellow", children: _jsx(Spinner, { type: "dots" }) }));
+                return (_jsxs(Text, { color: "yellow", bold: true, children: [_jsx(Spinner, { type: "dots" }), " Executing"] }));
             case 'failed':
-                return _jsx(Text, { color: "red", children: SYMBOLS.FAILED });
+                return _jsx(Text, { color: "red", bold: true, children: "\u2716 Failed" });
             default:
-                return _jsx(Text, { color: "gray", children: SYMBOLS.PENDING });
+                return _jsx(Text, { color: "gray", children: "\u25C8 Pending" });
         }
     };
-
-    return (_jsxs(Box, {
-        flexDirection: "column", padding: 1, minHeight: 12, children: [
-            _jsxs(Text, { color: "cyan", bold: true, children: ["Task Graph \u2014 \"", taskTitle || 'Autonomous Sandbox Review & Verification', "\""] }),
-            _jsx(Box, {
-                flexDirection: "column", marginY: 1, children: defaultNodes.map((node, index) => {
+    // Slice nodes for height safety to prevent terminal scrolling & flickering
+    const visibleNodes = defaultNodes.slice(0, maxVisibleNodes);
+    return (_jsxs(Box, { flexDirection: "column", paddingX: 1, paddingY: 0, flexGrow: 1, overflow: "hidden", children: [_jsxs(Box, { justifyContent: "space-between", marginBottom: 1, children: [_jsxs(Text, { color: "yellow", bold: true, children: ["\u2756 TASK EXECUTION GRAPH \u2014 \"", taskTitle || 'Autonomous Sandbox Review & Verification', "\""] }), _jsxs(Text, { color: "gray", children: ["[", defaultNodes.length, " Total Steps]"] })] }), _jsx(Box, { flexDirection: "column", flexGrow: 1, overflow: "hidden", children: visibleNodes.map((node, index) => {
                     const isSelected = index === selectedIndex;
                     const isChild = Boolean(node.parentId);
                     const indent = isChild ? '       ├─ ' : '  ';
-                    return (_jsxs(Box, { gap: 1, children: [
-                        _jsxs(Text, { color: isSelected ? 'magenta' : 'gray', children: [isSelected ? '>' : ' ', indent, "[", node.id, "]"] }),
-                        _jsx(Text, { color: isSelected ? 'magenta' : node.status === 'running' ? 'yellow' : (node.status === 'done' || node.status === 'completed') ? 'white' : 'gray', bold: isSelected || node.status === 'running', underline: isSelected, children: node.label }),
-                        node.detail && _jsxs(Text, { color: "gray", children: ["(", node.detail, ")"] }),
-                        _jsx(Text, { color: "gray", children: "....................." }),
-                        getStatusIcon(node.status),
-                        _jsx(Text, { color: node.status === 'running' ? 'yellow' : (node.status === 'done' || node.status === 'completed') ? 'green' : node.status === 'failed' ? 'red' : 'gray', children: node.status })
-                    ] }, node.id));
-                })
-            }),
-            defaultNodes[selectedIndex] && defaultNodes[selectedIndex].detail && (_jsxs(Box, { paddingX: 1, borderStyle: "single", borderColor: "gray", children: [
-                _jsx(Text, { color: "gray", children: "Node Detail: " }),
-                _jsx(Text, { color: "white", children: defaultNodes[selectedIndex].detail })
-            ] })),
-            _jsxs(Box, { marginTop: 1, gap: 3, children: [
-                _jsx(Text, { color: "gray", children: "\u2191/\u2193: navigate nodes" }),
-                _jsx(Text, { color: "magenta", children: "/diff: view diff" }),
-                _jsx(Text, { color: "magenta", children: "/trace: view trace" }),
-                _jsx(Text, { color: "magenta", children: "/pause: pause execution" })
-            ] })
-        ]
-    }));
+                    return (_jsxs(Box, { gap: 1, children: [_jsxs(Text, { color: isSelected ? 'yellow' : 'gray', children: [isSelected ? '👑' : ' ', indent, "[", node.id, "]"] }), _jsx(Text, { color: isSelected
+                                    ? 'yellow'
+                                    : node.status === 'running'
+                                        ? 'yellow'
+                                        : node.status === 'done' || node.status === 'completed'
+                                            ? 'white'
+                                            : 'gray', bold: isSelected || node.status === 'running', underline: isSelected, children: node.label }), node.detail && _jsxs(Text, { color: "gray", children: ["(", node.detail, ")"] }), _jsx(Box, { flexGrow: 1 }), getStatusBadge(node.status)] }, node.id));
+                }) }), defaultNodes[selectedIndex] && (_jsxs(Box, { marginTop: 1, paddingX: 1, borderStyle: "single", borderColor: "magenta", justifyContent: "space-between", children: [_jsxs(Box, { gap: 1, children: [_jsx(Text, { color: "yellow", bold: true, children: "Node Detail:" }), _jsx(Text, { color: "white", children: defaultNodes[selectedIndex].detail || defaultNodes[selectedIndex].label })] }), _jsxs(Text, { color: "gray", children: ["Step ", selectedIndex + 1, "/", defaultNodes.length] })] })), _jsxs(Box, { marginTop: 0, gap: 3, children: [_jsx(Text, { color: "gray", children: "\u2191/\u2193: navigate nodes" }), _jsx(Text, { color: "magenta", children: "/diff: switch view" }), _jsx(Text, { color: "yellow", children: "/approve: push to github" })] })] }));
 };

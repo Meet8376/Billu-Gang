@@ -1,12 +1,13 @@
 import React from 'react';
-import { IntakeStep } from './views/IntakeView.js';
 import { SessionInfo, TaskGraphNode } from '../api/apiTypes.js';
-export type ActiveView = 'intake' | 'graph' | 'diff' | 'trace' | 'summary' | 'memory' | 'benchmark';
+export type ActiveView = 'graph' | 'diff';
+export declare function useTerminalSize(): {
+    columns: number;
+    rows: number;
+};
 interface LayoutProps {
     session: SessionInfo;
     onCommandSubmit: (cmd: string) => void;
-    intakeSteps: IntakeStep[];
-    intakeReady: boolean;
     taskTitle: string;
     taskNodes: TaskGraphNode[];
     activeViewOverride?: ActiveView;

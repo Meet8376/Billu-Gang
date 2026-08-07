@@ -1,36 +1,47 @@
-import React, { useState } from 'react';
-import { Box, useInput } from 'ink';
+import React, { useState, useEffect } from 'react';
+import { Box, Text, useInput, useStdout } from 'ink';
 import { HeaderBar } from './HeaderBar.js';
 import { StatusStrip } from './StatusStrip.js';
 import { CommandLine } from './CommandLine.js';
 import { ApprovalPrompt } from './ApprovalPrompt.js';
-import { IntakeView, IntakeStep, StageStatus } from './views/IntakeView.js';
 import { TaskGraphView } from './views/TaskGraphView.js';
 import { DiffView } from './views/DiffView.js';
-import { TraceView } from './views/TraceView.js';
-import { ReviewerSummaryView } from './views/ReviewerSummaryView.js';
-import { MemoryInspectView } from './views/MemoryInspectView.js';
-import { BenchmarkView } from './views/BenchmarkView.js';
-import { SessionInfo, TaskGraphNode, MemoryItem } from '../api/apiTypes.js';
+import { SessionInfo, TaskGraphNode } from '../api/apiTypes.js';
 
-export type ActiveView = 'intake' | 'graph' | 'diff' | 'trace' | 'summary' | 'memory' | 'benchmark';
+export type ActiveView = 'graph' | 'diff';
+
+export function useTerminalSize() {
+  const { stdout } = useStdout();
+  const [size, setSize] = useState({
+    columns: stdout?.columns || process.stdout.columns || 80,
+    rows: stdout?.rows || process.stdout.rows || 24
+  });
+
+  useEffect(() => {
+    const handleResize = () => {
+      const cols = stdout?.columns || process.stdout.columns || 80;
+      const rws = stdout?.rows || process.stdout.rows || 24;
+      setSize({ columns: cols, rows: rws });
+    };
+
+    handleResize();
+    stdout?.on('resize', handleResize);
+    process.stdout?.on('resize', handleResize);
+
+    return () => {
+      stdout?.off('resize', handleResize);
+      process.stdout?.off('resize', handleResize);
+    };
+  }, [stdout]);
+
+  return size;
+}
 
 interface LayoutProps {
   session: SessionInfo;
   onCommandSubmit: (cmd: string) => void;
-  intakeSteps: IntakeStep[];
-  intakeReady: boolean;
   taskTitle: string;
   taskNodes: TaskGraphNode[];
-  memoryItems?: MemoryItem[];
-  stages?: StageStatus[];
-  liveLogs?: string[];
-  finalSummary?: {
-    score?: number;
-    testsPassing?: string;
-    executionTimeSec?: number;
-    reportPath?: string;
-  };
   activeViewOverride?: ActiveView;
   diffFileFilter?: string;
   pendingApproval?: { command: string; reason: string };
@@ -40,84 +51,109 @@ interface LayoutProps {
 export const Layout: React.FC<LayoutProps> = ({
   session,
   onCommandSubmit,
-  intakeSteps,
-  intakeReady,
   taskTitle,
   taskNodes,
-  memoryItems,
-  stages,
-  liveLogs,
-  finalSummary,
   activeViewOverride,
   diffFileFilter,
   pendingApproval,
   onApprovalResponse
 }) => {
-  const [activeView, setActiveView] = useState<ActiveView>('intake');
+  const [activeView, setActiveView] = useState<ActiveView>('graph');
+  const { columns, rows } = useTerminalSize();
 
   const currentView = activeViewOverride || activeView;
 
-  useInput((input, key) => {
-    if (key.tab) {
-      const views: ActiveView[] = ['intake', 'graph', 'diff', 'trace', 'summary', 'memory', 'benchmark'];
-      const currentIndex = views.indexOf(currentView);
-      const nextIndex = (currentIndex + 1) % views.length;
-      setActiveView(views[nextIndex]);
-    }
-  }, { isActive: true });
+  useInput(
+    (input, key) => {
+      if (key.tab) {
+        setActiveView((prev) => (prev === 'graph' ? 'diff' : 'graph'));
+      }
+    },
+    { isActive: true }
+  );
 
   const handleCommand = (cmd: string) => {
     const trimmed = cmd.toLowerCase().trim();
-    if (trimmed.startsWith('/plan') || trimmed.startsWith('/graph')) {
+    if (trimmed.startsWith('/plan') || trimmed.startsWith('/graph') || trimmed.startsWith('/tasks')) {
       setActiveView('graph');
-    } else if (trimmed.startsWith('/diff')) {
+    } else if (trimmed.startsWith('/diff') || trimmed.startsWith('/patch')) {
       setActiveView('diff');
-    } else if (trimmed.startsWith('/trace') || trimmed.startsWith('/logs')) {
-      setActiveView('trace');
-    } else if (trimmed.startsWith('/summary') || trimmed.startsWith('/review')) {
-      setActiveView('summary');
-    } else if (trimmed.startsWith('/memory')) {
-      setActiveView('memory');
-    } else if (trimmed.startsWith('/benchmark') || trimmed.startsWith('/eval')) {
-      setActiveView('benchmark');
-    } else if (trimmed.startsWith('/intake')) {
-      setActiveView('intake');
     }
     onCommandSubmit(cmd);
   };
 
+  // Calculate dynamic line bounds to eliminate flickering
+  const availableContentRows = Math.max(5, rows - 12);
+
   const renderMainPane = () => {
     switch (currentView) {
-      case 'intake':
-        return <IntakeView steps={intakeSteps} ready={intakeReady} stages={stages} liveLogs={liveLogs} finalSummary={finalSummary} />;
       case 'graph':
-        return <TaskGraphView taskTitle={taskTitle} nodes={taskNodes} />;
+        return (
+          <TaskGraphView
+            taskTitle={taskTitle}
+            nodes={taskNodes}
+            maxVisibleNodes={availableContentRows}
+          />
+        );
       case 'diff':
-        return <DiffView activeFileFilter={diffFileFilter} />;
-      case 'trace':
-        return <TraceView />;
-      case 'summary':
-        return <ReviewerSummaryView />;
-      case 'memory':
-        return <MemoryInspectView memoryItems={memoryItems} />;
-      case 'benchmark':
-        return <BenchmarkView />;
+        return (
+          <DiffView
+            activeFileFilter={diffFileFilter}
+            maxDiffLines={availableContentRows}
+          />
+        );
       default:
-        return <IntakeView steps={intakeSteps} ready={intakeReady} stages={stages} liveLogs={liveLogs} finalSummary={finalSummary} />;
+        return (
+          <TaskGraphView
+            taskTitle={taskTitle}
+            nodes={taskNodes}
+            maxVisibleNodes={availableContentRows}
+          />
+        );
     }
   };
 
   return (
-    <Box flexDirection="column" width="100%" height="100%">
-      {/* 1. HEADER BAR */}
+    <Box flexDirection="column" width={columns} height={rows} overflow="hidden">
+      {/* 1. ROYAL HEADER BAR */}
       <HeaderBar session={session} activeView={currentView} />
 
-      {/* 2. MAIN PANE */}
-      <Box flexGrow={1} borderStyle="single" borderColor="blue" flexDirection="column">
+      {/* 2. VIEW SWITCHER TABS BAR */}
+      <Box paddingX={1} marginY={0} gap={2}>
+        <Box gap={1}>
+          <Text
+            color={currentView === 'graph' ? 'yellow' : 'gray'}
+            bold={currentView === 'graph'}
+            underline={currentView === 'graph'}
+          >
+            [ ❖ Task Graph {currentView === 'graph' ? '(Active)' : ''} ]
+          </Text>
+        </Box>
+        <Box gap={1}>
+          <Text
+            color={currentView === 'diff' ? 'yellow' : 'gray'}
+            bold={currentView === 'diff'}
+            underline={currentView === 'diff'}
+          >
+            [ ✦ Diff View {currentView === 'diff' ? '(Active)' : ''} ]
+          </Text>
+        </Box>
+      </Box>
+
+      {/* 3. MAIN PANE */}
+      <Box
+        flexGrow={1}
+        borderStyle="round"
+        borderColor={currentView === 'graph' ? 'yellow' : 'cyan'}
+        flexDirection="column"
+        overflow="hidden"
+      >
         {pendingApproval ? (
           <ApprovalPrompt
             commandToApprove={pendingApproval.command}
             reason={pendingApproval.reason}
+            repoName={session.repoName}
+            branch={session.branch}
             onRespond={onApprovalResponse || (() => {})}
           />
         ) : (
@@ -125,10 +161,10 @@ export const Layout: React.FC<LayoutProps> = ({
         )}
       </Box>
 
-      {/* 3. STATUS STRIP */}
+      {/* 4. ROYAL STATUS STRIP */}
       <StatusStrip session={session} currentTaskLabel={taskTitle} />
 
-      {/* 4. COMMAND / INPUT LINE */}
+      {/* 5. ROYAL COMMAND / INPUT LINE */}
       <CommandLine onSubmit={handleCommand} disabled={Boolean(pendingApproval)} />
     </Box>
   );

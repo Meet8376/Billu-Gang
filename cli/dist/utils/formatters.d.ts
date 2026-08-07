@@ -5,3 +5,4 @@ export declare function formatCurrency(amount: number): string;
 export declare function formatTokenCount(tokens: number): string;
 export declare function formatElapsedTime(seconds: number): string;
 export declare function formatTruncatedPath(path: string, maxLength?: number): string;
+export declare function parseRepoName(repoPath: string): string;

@@ -257,9 +257,9 @@ async function main() {
 
   program
     .command('review')
-    .description('Open Reviewer Summary view for completed task')
+    .description('Open CLI TUI for code review and verification')
     .action(() => {
-      runRepl('.', 'gemini-3.5-flash-lite');
+      runRepl('.', 'gemini-2.5-flash');
     });
 
   program

@@ -5,14 +5,14 @@ export declare const IntakeProgressSchema: z.ZodObject<{
     completed: z.ZodBoolean;
     detail: z.ZodOptional<z.ZodString>;
 }, "strip", z.ZodTypeAny, {
+    completed: boolean;
     type: "intake_progress";
     step: string;
-    completed: boolean;
     detail?: string | undefined;
 }, {
+    completed: boolean;
     type: "intake_progress";
     step: string;
-    completed: boolean;
     detail?: string | undefined;
 }>;
 export declare const PlanUpdatedSchema: z.ZodObject<{
@@ -28,35 +28,35 @@ export declare const PlanUpdatedSchema: z.ZodObject<{
         status: "done" | "running" | "pending" | "failed";
         id: string;
         label: string;
-        parentId?: string | undefined;
         detail?: string | undefined;
+        parentId?: string | undefined;
     }, {
         status: "done" | "running" | "pending" | "failed";
         id: string;
         label: string;
-        parentId?: string | undefined;
         detail?: string | undefined;
+        parentId?: string | undefined;
     }>, "many">;
 }, "strip", z.ZodTypeAny, {
-    type: "plan_updated";
     taskTitle: string;
     nodes: {
         status: "done" | "running" | "pending" | "failed";
         id: string;
         label: string;
-        parentId?: string | undefined;
         detail?: string | undefined;
+        parentId?: string | undefined;
     }[];
+    type: "plan_updated";
 }, {
-    type: "plan_updated";
     taskTitle: string;
     nodes: {
         status: "done" | "running" | "pending" | "failed";
         id: string;
         label: string;
-        parentId?: string | undefined;
         detail?: string | undefined;
+        parentId?: string | undefined;
     }[];
+    type: "plan_updated";
 }>;
 export declare const ToolStartedSchema: z.ZodObject<{
     type: z.ZodLiteral<"tool_started">;
@@ -98,14 +98,14 @@ export declare const VerificationEventSchema: z.ZodObject<{
     errorReason: z.ZodOptional<z.ZodString>;
 }, "strip", z.ZodTypeAny, {
     type: "verification_event";
-    suiteName: string;
     status: "running" | "pending" | "failed" | "passed";
+    suiteName: string;
     durationSeconds?: number | undefined;
     errorReason?: string | undefined;
 }, {
     type: "verification_event";
-    suiteName: string;
     status: "running" | "pending" | "failed" | "passed";
+    suiteName: string;
     durationSeconds?: number | undefined;
     errorReason?: string | undefined;
 }>;
@@ -137,14 +137,14 @@ export declare const SSEEventSchema: z.ZodDiscriminatedUnion<"type", [z.ZodObjec
     completed: z.ZodBoolean;
     detail: z.ZodOptional<z.ZodString>;
 }, "strip", z.ZodTypeAny, {
+    completed: boolean;
     type: "intake_progress";
     step: string;
-    completed: boolean;
     detail?: string | undefined;
 }, {
+    completed: boolean;
     type: "intake_progress";
     step: string;
-    completed: boolean;
     detail?: string | undefined;
 }>, z.ZodObject<{
     type: z.ZodLiteral<"plan_updated">;
@@ -159,35 +159,35 @@ export declare const SSEEventSchema: z.ZodDiscriminatedUnion<"type", [z.ZodObjec
         status: "done" | "running" | "pending" | "failed";
         id: string;
         label: string;
-        parentId?: string | undefined;
         detail?: string | undefined;
+        parentId?: string | undefined;
     }, {
         status: "done" | "running" | "pending" | "failed";
         id: string;
         label: string;
-        parentId?: string | undefined;
         detail?: string | undefined;
+        parentId?: string | undefined;
     }>, "many">;
 }, "strip", z.ZodTypeAny, {
-    type: "plan_updated";
     taskTitle: string;
     nodes: {
         status: "done" | "running" | "pending" | "failed";
         id: string;
         label: string;
-        parentId?: string | undefined;
         detail?: string | undefined;
+        parentId?: string | undefined;
     }[];
+    type: "plan_updated";
 }, {
-    type: "plan_updated";
     taskTitle: string;
     nodes: {
         status: "done" | "running" | "pending" | "failed";
         id: string;
         label: string;
-        parentId?: string | undefined;
         detail?: string | undefined;
+        parentId?: string | undefined;
     }[];
+    type: "plan_updated";
 }>, z.ZodObject<{
     type: z.ZodLiteral<"tool_started">;
     toolName: z.ZodString;
@@ -226,14 +226,14 @@ export declare const SSEEventSchema: z.ZodDiscriminatedUnion<"type", [z.ZodObjec
     errorReason: z.ZodOptional<z.ZodString>;
 }, "strip", z.ZodTypeAny, {
     type: "verification_event";
-    suiteName: string;
     status: "running" | "pending" | "failed" | "passed";
+    suiteName: string;
     durationSeconds?: number | undefined;
     errorReason?: string | undefined;
 }, {
     type: "verification_event";
-    suiteName: string;
     status: "running" | "pending" | "failed" | "passed";
+    suiteName: string;
     durationSeconds?: number | undefined;
     errorReason?: string | undefined;
 }>, z.ZodObject<{

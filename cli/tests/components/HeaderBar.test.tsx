@@ -9,7 +9,7 @@ describe('HeaderBar Component', () => {
       sessionId: 'sess-test-123',
       repoName: 'Billu-Gang',
       branch: 'main',
-      modelProvider: 'claude-3-5-sonnet',
+      modelProvider: 'gemini-2.5-flash',
       elapsedSeconds: 45,
       tokensUsed: 12500,
       costSoFar: 0.05,
@@ -20,11 +20,10 @@ describe('HeaderBar Component', () => {
     const { lastFrame } = render(<HeaderBar session={session} activeView="graph" />);
 
     const output = lastFrame() || '';
-    expect(output).toContain('AE-01');
-    expect(output).toContain('HARNESS');
+    expect(output).toContain('ROYAL AGENTIC HARNESS');
     expect(output).toContain('Billu-Gang');
-    expect(output).toContain('(main)');
-    expect(output).toContain('claude-3-5-sonnet');
-    expect(output).toContain('GRAPH');
+    expect(output).toContain('main');
+    expect(output).toContain('gemini-2.5-flash');
+    expect(output).toContain('Task Graph');
   });
 });

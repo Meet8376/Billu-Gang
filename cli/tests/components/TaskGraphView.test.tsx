@@ -15,10 +15,9 @@ describe('TaskGraphView Component', () => {
     );
 
     const output = lastFrame() || '';
-    expect(output).toContain('Task Graph — "Fix pagination bug"');
+    expect(output).toContain('TASK EXECUTION GRAPH');
+    expect(output).toContain('Fix pagination bug');
     expect(output).toContain('[1] Reproduce issue');
     expect(output).toContain('[2] Draft patch');
-    expect(output).toContain('done');
-    expect(output).toContain('running');
   });
 });

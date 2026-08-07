@@ -3,6 +3,8 @@ import { DiffPatch } from '../../api/apiTypes.js';
 interface DiffViewProps {
     patches?: DiffPatch[];
     activeFileFilter?: string;
+    runCount?: number;
+    maxDiffLines?: number;
 }
 export declare const DiffView: React.FC<DiffViewProps>;
 export {};

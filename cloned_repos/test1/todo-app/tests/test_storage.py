@@ -1,9 +1,14 @@
 #!/usr/bin/env python3
 
-from todo_app.utils import count_completed
+import os
+import sys
+
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+
+from utils import count_completed
 
 
-def test_count() -> None:
+def test_count():
     todos = [
         {"done": True},
         {"done": False},

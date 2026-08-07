@@ -1,3 +1,5 @@
+import path from 'path';
+import { parseRepoName } from '../utils/formatters.js';
 export class BackendApiClient {
     baseUrl;
     constructor(baseUrl = 'http://localhost:8000/api/v1') {
@@ -21,9 +23,9 @@ export class BackendApiClient {
             const data = await response.json();
             return {
                 sessionId: data.session_id || 'ae-sess-001',
-                repoName: (data.workspace_path || repoPath).split(/[\/\\]/).pop() || 'Billu-Gang',
+                repoName: parseRepoName(data.workspace_path || repoPath),
                 branch: 'main',
-                modelProvider: model || 'gpt-4o',
+                modelProvider: model || 'gemini-3.5-flash-lite',
                 elapsedSeconds: 0,
                 tokensUsed: data.total_tokens_used || 0,
                 costSoFar: data.total_cost_usd || 0.0,
@@ -35,9 +37,9 @@ export class BackendApiClient {
             // Fallback mock session for local testing / offline phase
             return {
                 sessionId: 'ae-sess-001',
-                repoName: repoPath.split(/[\/\\]/).pop() || 'Billu-Gang',
+                repoName: parseRepoName(repoPath),
                 branch: 'main',
-                modelProvider: model || 'claude-3-5-sonnet',
+                modelProvider: model || 'gemini-3.5-flash-lite',
                 elapsedSeconds: 0,
                 tokensUsed: 0,
                 costSoFar: 0.0,
@@ -46,17 +48,25 @@ export class BackendApiClient {
             };
         }
     }
-    async submitIssue(sessionId, issueDescription) {
+    async submitIssue(sessionId, issueDescription, modelName, workspacePath) {
         try {
+            const apiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY || '';
             const response = await fetch(`${this.baseUrl}/run`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ session_id: sessionId, prompt: issueDescription })
+                body: JSON.stringify({
+                    session_id: sessionId,
+                    prompt: issueDescription,
+                    model_name: modelName || 'gemini-3.5-flash-lite',
+                    workspace_path: workspacePath ? path.resolve(workspacePath) : undefined,
+                    api_key: apiKey
+                })
             });
-            return { success: response.ok };
+            const data = await response.json();
+            return { success: response.ok, data };
         }
         catch {
-            return { success: true };
+            return { success: false };
         }
     }
     async fetchMemoryItems(sessionId) {

@@ -1,9 +1,14 @@
 #!/usr/bin/env python3
 
-from todo_app.todo import TodoManager
+import os
+import sys
+
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__))))
+
+from todo import TodoManager
 
 
-def main() -> None:
+def main():
     manager = TodoManager()
 
     while True:

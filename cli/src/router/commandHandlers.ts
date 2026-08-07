@@ -4,7 +4,7 @@ import { MemoryItem } from '../api/apiTypes.js';
 
 export interface CommandExecutionResult {
   handledLocally: boolean;
-  activeViewTarget?: 'intake' | 'graph' | 'diff' | 'trace' | 'summary' | 'memory' | 'benchmark';
+  activeViewTarget?: 'graph' | 'diff';
   fileFilter?: string;
   feedbackMessage?: string;
   memoryItems?: MemoryItem[];
@@ -16,13 +16,6 @@ export async function handleSlashCommand(
   apiClient: BackendApiClient
 ): Promise<CommandExecutionResult> {
   switch (cmd.type) {
-    case 'intake':
-      return {
-        handledLocally: true,
-        activeViewTarget: 'intake',
-        feedbackMessage: 'Switched to Repository Intake View.'
-      };
-
     case 'plan':
       return {
         handledLocally: true,
@@ -40,54 +33,16 @@ export async function handleSlashCommand(
           : 'Switched to Diff View.'
       };
 
-    case 'trace':
+    case 'approve':
       return {
         handledLocally: true,
-        activeViewTarget: 'trace',
-        feedbackMessage: 'Switched to Trace View.'
-      };
-
-    case 'summary':
-      return {
-        handledLocally: true,
-        activeViewTarget: 'summary',
-        feedbackMessage: 'Switched to Reviewer Summary View.'
-      };
-
-    case 'memory':
-      const items = await apiClient.fetchMemoryItems(sessionId);
-      return {
-        handledLocally: true,
-        activeViewTarget: 'memory',
-        memoryItems: items,
-        feedbackMessage: `Switched to Memory Inspect View (${items.length} items loaded).`
-      };
-
-    case 'benchmark':
-      return {
-        handledLocally: true,
-        activeViewTarget: 'benchmark',
-        feedbackMessage: 'Switched to Benchmark Evaluation View.'
-      };
-
-    case 'rollback':
-      const res = await apiClient.rollbackSession(sessionId);
-      return {
-        handledLocally: true,
-        feedbackMessage: `Rollback: ${res.message}`
-      };
-
-    case 'pause':
-      return {
-        handledLocally: true,
-        feedbackMessage: 'Session execution paused.'
+        feedbackMessage: 'GitHub push approval requested.'
       };
 
     case 'help':
       return {
         handledLocally: true,
-        feedbackMessage:
-          'Available slash commands: /intake, /plan, /diff [file], /trace, /summary, /memory, /benchmark, /rollback, /pause'
+        feedbackMessage: 'Available commands: /graph, /plan, /diff [file], /approve, /push, /help'
       };
 
     default:

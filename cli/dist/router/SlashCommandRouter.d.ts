@@ -1,4 +1,4 @@
-export type SlashCommandType = 'intake' | 'plan' | 'diff' | 'trace' | 'summary' | 'memory' | 'benchmark' | 'rollback' | 'approve' | 'pause' | 'help' | 'unknown';
+export type SlashCommandType = 'plan' | 'diff' | 'approve' | 'help' | 'unknown';
 export interface ParsedSlashCommand {
     type: SlashCommandType;
     rawInput: string;

@@ -1,29 +1,31 @@
 #!/usr/bin/env python3
 
-from typing import Any
+import os
+import sys
 
-from todo_app.storage import Storage
+sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)))
+
+from storage import Storage
 
 
 class TodoManager:
-    def __init__(self) -> None:
+    def __init__(self):
         self.storage = Storage()
-        self.todos: list[dict[str, Any]] = self.storage.load()
+        self.todos = self.storage.load()
 
-    def add(self, title: str) -> None:
+    def add(self, title):
         self.todos.append({"title": title, "done": False})
         self.storage.save(self.todos)
 
-    def complete(self, title: str) -> None:
+    def complete(self, title):
         for todo in self.todos:
             if todo["title"] == title:
                 todo["done"] = True
-                self.storage.save(self.todos)
-                break
+        self.storage.save(self.todos)
 
-    def list_all(self) -> None:
+    def list_all(self):
         for todo in self.todos:
             print(todo)
 
-    def search(self, keyword: str) -> list[dict[str, Any]]:
-        return [t for t in self.todos if keyword in t.get("title", "")]
+    def search(self, keyword):
+        return [t for t in self.todos if keyword in t["title"]]
