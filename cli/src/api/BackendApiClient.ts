@@ -12,12 +12,28 @@ export class BackendApiClient {
       const response = await fetch(`${this.baseUrl}/session`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ repo_path: repoPath, model_provider: model })
+        body: JSON.stringify({
+          repo_path: repoPath,
+          workspace_path: repoPath,
+          model_provider: model,
+          goal_prompt: `Autonomous session for ${repoPath}`
+        })
       });
       if (!response.ok) {
         throw new Error(`Failed to create session: ${response.statusText}`);
       }
-      return (await response.json()) as SessionInfo;
+      const data = await response.json();
+      return {
+        sessionId: data.session_id || 'ae-sess-001',
+        repoName: (data.workspace_path || repoPath).split(/[\/\\]/).pop() || 'Billu-Gang',
+        branch: 'main',
+        modelProvider: model || 'gpt-4o',
+        elapsedSeconds: 0,
+        tokensUsed: data.total_tokens_used || 0,
+        costSoFar: data.total_cost_usd || 0.0,
+        testsPassing: '0/0',
+        sandboxState: 'sandboxed'
+      };
     } catch (err) {
       // Fallback mock session for local testing / offline phase
       return {
@@ -62,7 +78,7 @@ export class BackendApiClient {
       const response = await fetch(`${this.baseUrl}/rollback`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ session_id: sessionId })
+        body: JSON.stringify({ session_id: sessionId, target_checkpoint_id: 'initial' })
       });
       const data = await response.json();
       return { success: response.ok, message: data.message || 'Rollback successful' };

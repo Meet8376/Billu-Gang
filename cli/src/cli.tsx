@@ -77,10 +77,16 @@ export const AppContainer: React.FC<AppProps> = ({
       setStreamState((prev) => ({ ...prev, session: sessionInfo }));
     });
 
+    sseClient.onEvent((event) => {
+      setStreamState((prev) => handleIncomingSSEEvent(prev, event));
+    });
+
     if (useMockStream) {
       startMockSSEStream(sseClient, (event) => {
         setStreamState((prev) => handleIncomingSSEEvent(prev, event));
       });
+    } else {
+      sseClient.connect();
     }
 
     const timer = setInterval(() => {

@@ -61,10 +61,16 @@ export const AppContainer = ({ initialRepoPath, initialModel, useMockStream = tr
         apiClient.createSession(initialRepoPath, initialModel).then((sessionInfo) => {
             setStreamState((prev) => ({ ...prev, session: sessionInfo }));
         });
+        sseClient.onEvent((event) => {
+            setStreamState((prev) => handleIncomingSSEEvent(prev, event));
+        });
         if (useMockStream) {
             startMockSSEStream(sseClient, (event) => {
                 setStreamState((prev) => handleIncomingSSEEvent(prev, event));
             });
+        }
+        else {
+            sseClient.connect();
         }
         const timer = setInterval(() => {
             setStreamState((prev) => ({

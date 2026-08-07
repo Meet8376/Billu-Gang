@@ -14,33 +14,38 @@ from backend.core.routes.sse_routes import broadcaster
 router = APIRouter()
 
 
+from typing import Optional
+
 class RunControlRequest(BaseModel):
     session_id: str
+    prompt: Optional[str] = None
+    issue_description: Optional[str] = None
 
 
 class RunControlResponse(BaseModel):
-    
     session_id: str
     status: str
     message: str
 
 
+@router.post("/run", response_model=RunControlResponse, status_code=status.HTTP_200_OK)
 @router.post("/run/start", response_model=RunControlResponse, status_code=status.HTTP_200_OK)
 async def start_run(payload: RunControlRequest):
     """Start autonomous execution run wired to ModelAdapter tool dispatch loop."""
     adapter = LangChainAdapter(model_name="gpt-4o")
+    issue_text = payload.prompt or payload.issue_description or f"Execute run for session {payload.session_id}"
 
     # Broadcast tool_started SSE event
     tool_start_evt = SSEEvent(
         event_id=str(uuid.uuid4()),
         event_type=EventType.TOOL_STARTED,
-        payload={"session_id": payload.session_id, "tool_name": "execute_task_graph"}
+        payload={"session_id": payload.session_id, "tool_name": "execute_task_graph", "prompt": issue_text}
     )
     await broadcaster.publish(tool_start_evt)
 
     # Execute completion step
     completion = await adapter.complete(
-        messages=[{"role": "user", "content": f"Execute run for session {payload.session_id}"}]
+        messages=[{"role": "user", "content": issue_text}]
     )
 
     # Broadcast tool_finished SSE event
@@ -56,6 +61,7 @@ async def start_run(payload: RunControlRequest):
         status="running",
         message="Autonomous execution initiated and model completion dispatched",
     )
+
 
 
 @router.post("/run/pause", response_model=RunControlResponse, status_code=status.HTTP_200_OK)

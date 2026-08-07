@@ -8,6 +8,7 @@ from tempfile import TemporaryDirectory
 from pathlib import Path
 
 from backend.repo_memory.db.init_script import initialize_harness_repo_memory
+from backend.repo_memory.db.database import close_db
 
 
 def test_initialize_harness_repo_memory():
@@ -26,3 +27,5 @@ def test_initialize_harness_repo_memory():
         assert result["status"] == "initialized"
         assert result["scanned_files_count"] >= 1
         assert os.path.exists(db_path)
+        close_db()
+

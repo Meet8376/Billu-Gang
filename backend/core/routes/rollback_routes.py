@@ -13,16 +13,19 @@ from backend.core.routes.sse_routes import broadcaster
 router = APIRouter()
 
 
+from typing import Optional
+
 class RollbackRequest(BaseModel):
     session_id: str
-    target_checkpoint_id: str
+    target_checkpoint_id: Optional[str] = "initial"
 
 
 class RollbackResponse(BaseModel):
     session_id: str
-    target_checkpoint_id: str
+    target_checkpoint_id: Optional[str]
     success: bool
     message: str
+
 
 
 @router.post("/rollback", response_model=RollbackResponse, status_code=status.HTTP_200_OK)

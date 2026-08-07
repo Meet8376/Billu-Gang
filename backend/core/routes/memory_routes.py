@@ -48,8 +48,9 @@ async def add_memory_item(item: MemoryItem) -> MemoryItem:
     sanitized_item = MemoryItem(
         id=item.id,
         tier=item.tier,
+        key=item.key,
         content=clean_content,
-        created_at=item.created_at,
+        provenance=item.provenance,
         invalidated=item.invalidated,
         metadata=clean_metadata,
     )

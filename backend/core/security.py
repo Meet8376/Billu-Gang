@@ -21,15 +21,16 @@ class CredentialSanitizer:
     # High-precision regular expressions for credentials and API keys
     PATTERNS: List[Tuple[str, str, str]] = [
         (
-            "OpenAI API Key",
-            r"\bsk-(?:proj-|svcacct-|)[a-zA-Z0-9_\-]{20,}\b",
-            "[REDACTED_OPENAI_KEY]",
-        ),
-        (
             "Anthropic API Key",
             r"\bsk-ant-(?:api\d*-)?[a-zA-Z0-9_\-]{20,}\b",
             "[REDACTED_ANTHROPIC_KEY]",
         ),
+        (
+            "OpenAI API Key",
+            r"\bsk-(?:proj-|svcacct-|)[a-zA-Z0-9_\-]{20,}\b",
+            "[REDACTED_OPENAI_KEY]",
+        ),
+
         (
             "GitHub Personal Access Token",
             r"\b(?:ghp|gho|ghu|ghs|ghr)_[a-zA-Z0-9]{36}\b",

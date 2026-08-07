@@ -9,6 +9,7 @@ from datetime import datetime, timezone
 
 from backend.repo_memory.db import (
     init_db,
+    close_db,
     get_db_session,
     SessionModel,
     MemoryItemModel,
@@ -30,7 +31,12 @@ def temp_db():
     yield db_path
     
     # Cleanup
-    Path(db_path).unlink(missing_ok=True)
+    close_db()
+    try:
+        Path(db_path).unlink(missing_ok=True)
+    except PermissionError:
+        pass
+
 
 
 def test_init_db(temp_db):

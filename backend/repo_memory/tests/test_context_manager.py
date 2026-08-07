@@ -6,7 +6,7 @@ import pytest
 import os
 from tempfile import NamedTemporaryFile
 
-from backend.repo_memory.db.database import init_db, get_db_session
+from backend.repo_memory.db.database import init_db, close_db, get_db_session
 from backend.repo_memory.db.models import SessionModel, MemoryTier
 from backend.repo_memory.memory.tiered_store import TieredMemoryStore
 from backend.repo_memory.context.context_manager import ContextManager
@@ -26,8 +26,12 @@ def temp_db():
 
     yield db_path, session_id
 
-    if os.path.exists(db_path):
-        os.remove(db_path)
+    close_db()
+    try:
+        if os.path.exists(db_path):
+            os.remove(db_path)
+    except PermissionError:
+        pass
 
 
 def test_context_manager_assembly(temp_db):
@@ -50,4 +54,5 @@ def test_context_manager_assembly(temp_db):
     assert len(result["included_memories"]) >= 1
     # Check that secrets in query were sanitized
     assert "sk-1234" not in result["sanitized_query"]
-    assert "[REDACTED_OPENAI_API_KEY]" in result["sanitized_query"]
+    assert "[REDACTED_OPENAI_KEY]" in result["sanitized_query"] or "[REDACTED_OPENAI_API_KEY]" in result["sanitized_query"]
+

@@ -23,15 +23,22 @@ _sessions: Dict[str, SessionResponse] = {}
 _checkpoints: Dict[str, SessionStateCheckpoint] = {}
 
 
+import os
+from backend.repo_memory.db.database import get_db_session
+from backend.repo_memory.db.models import SessionModel
+
 @router.post("/session", response_model=SessionResponse, status_code=status.HTTP_201_CREATED)
 async def create_session(payload: SessionCreate):
     """Initialize a new coding session."""
     session_id = str(uuid.uuid4())
     now = datetime.utcnow()
+    workspace_path = payload.workspace_path or payload.repo_path or os.getcwd()
+    goal_prompt = payload.goal_prompt or f"Autonomous coding session for {workspace_path}"
+
     session_resp = SessionResponse(
         session_id=session_id,
-        workspace_path=payload.workspace_path,
-        goal_prompt=payload.goal_prompt,
+        workspace_path=workspace_path,
+        goal_prompt=goal_prompt,
         status=SessionStatus.IDLE,
         created_at=now,
         updated_at=now,
@@ -39,7 +46,21 @@ async def create_session(payload: SessionCreate):
         total_cost_usd=0.0,
     )
     _sessions[session_id] = session_resp
+
+    # Persist session to SQLite database if possible
+    try:
+        with get_db_session() as db_sess:
+            db_model = SessionModel(
+                repo_path=workspace_path,
+                model_provider=payload.model_provider or "gpt-4o",
+                meta={"session_id": session_id, "goal_prompt": goal_prompt}
+            )
+            db_sess.add(db_model)
+    except Exception:
+        pass  # Graceful fallback to memory dictionary
+
     return session_resp
+
 
 
 @router.get("/session/{session_id}", response_model=SessionResponse)

@@ -105,6 +105,16 @@ def init_db(db_path: str = None, echo: bool = False, force_recreate: bool = Fals
     return engine
 
 
+def close_db():
+    """Dispose global database engine connection pool."""
+    global engine, SessionLocal
+    if engine is not None:
+        engine.dispose()
+        engine = None
+        SessionLocal = None
+
+
+
 @contextmanager
 def get_db_session(db_path: str = None) -> Generator[Session, None, None]:
     """

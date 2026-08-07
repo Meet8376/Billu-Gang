@@ -6,7 +6,7 @@ import pytest
 import os
 from tempfile import NamedTemporaryFile
 
-from backend.repo_memory.db.database import init_db, get_db_session
+from backend.repo_memory.db.database import init_db, close_db, get_db_session
 from backend.repo_memory.db.models import SessionModel, SymbolIndexModel
 from backend.repo_memory.indexer.symbol_graph import SymbolGraph
 
@@ -25,8 +25,13 @@ def temp_db():
 
     yield db_path, session_id
 
-    if os.path.exists(db_path):
-        os.remove(db_path)
+    close_db()
+    try:
+        if os.path.exists(db_path):
+            os.remove(db_path)
+    except PermissionError:
+        pass
+
 
 
 def test_symbol_graph_init(temp_db):

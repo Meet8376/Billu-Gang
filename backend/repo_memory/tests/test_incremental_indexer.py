@@ -7,7 +7,7 @@ import os
 from tempfile import NamedTemporaryFile, TemporaryDirectory
 from pathlib import Path
 
-from backend.repo_memory.db.database import init_db, get_db_session
+from backend.repo_memory.db.database import init_db, close_db, get_db_session
 from backend.repo_memory.db.models import SessionModel, SymbolIndexModel
 from backend.repo_memory.indexer.incremental_indexer import IncrementalIndexer
 
@@ -28,8 +28,13 @@ def temp_environment():
 
         yield db_path, session_id, repo_dir
 
-    if os.path.exists(db_path):
-        os.remove(db_path)
+    close_db()
+    try:
+        if os.path.exists(db_path):
+            os.remove(db_path)
+    except PermissionError:
+        pass
+
 
 
 def test_incremental_indexer_refresh(temp_environment):

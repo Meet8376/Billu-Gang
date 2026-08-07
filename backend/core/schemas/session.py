@@ -19,8 +19,10 @@ class SessionStatus(str, Enum):
 
 class SessionCreate(BaseModel):
     """Payload to initialize a coding session."""
-    workspace_path: str = Field(..., description="Absolute local path to workspace directory")
-    goal_prompt: str = Field(..., description="High level task goal prompt from user")
+    workspace_path: Optional[str] = Field(default=None, description="Absolute local path to workspace directory")
+    repo_path: Optional[str] = Field(default=None, description="Alias for workspace_path from CLI")
+    goal_prompt: Optional[str] = Field(default=None, description="High level task goal prompt from user")
+    model_provider: Optional[str] = Field(default="gpt-4o", description="Selected AI model provider")
     max_budget_usd: Optional[float] = Field(default=10.0, description="Max USD budget for this session")
 
 
