@@ -19,6 +19,16 @@ from backend.verification.benchmarking.evaluator_grader import (
     GradeResult,
     grade_submission,
 )
+from backend.verification.benchmarking.bench_runner import (
+    BenchmarkRunner,
+    TaskEvalResult,
+    BatchEvalSummary,
+)
+from backend.verification.benchmarking.ablation_protocol import (
+    AblationProtocolEngine,
+    AblationVariantResult,
+    AblationMatrixReport,
+)
 
 __all__ = [
     "SampleBugRepo",
@@ -31,4 +41,10 @@ __all__ = [
     "EvaluatorGrader",
     "GradeResult",
     "grade_submission",
+    "BenchmarkRunner",
+    "TaskEvalResult",
+    "BatchEvalSummary",
+    "AblationProtocolEngine",
+    "AblationVariantResult",
+    "AblationMatrixReport",
 ]
