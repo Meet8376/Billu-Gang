@@ -1,27 +1,29 @@
 """
 Database Storage & Schema Layer
 
-SQLite database management for tiered memory, repository index,
-and session state storage.
+SQLite connection management, sessionmaker, SQLAlchemy ORM models,
+and initialization scripts for fresh onboarding (`harness init`).
 """
 
-from .database import init_db, get_db_session, SessionLocal, engine
+from .database import init_db, get_db_session
 from .models import (
+    Base,
     SessionModel,
     MemoryItemModel,
     SymbolIndexModel,
     CallGraphEdgeModel,
-    Base,
+    MemoryTier,
 )
+from .init_script import initialize_harness_repo_memory
 
 __all__ = [
     "init_db",
     "get_db_session",
-    "SessionLocal",
-    "engine",
+    "Base",
     "SessionModel",
     "MemoryItemModel",
     "SymbolIndexModel",
     "CallGraphEdgeModel",
-    "Base",
+    "MemoryTier",
+    "initialize_harness_repo_memory",
 ]

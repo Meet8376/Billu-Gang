@@ -1,8 +1,8 @@
 """
 Tiered Memory Engine & Provenance Management
 
-Provides CRUD operations for 7-tier memory system with provenance tracking,
-invalidation rules, and memory export/import serialization.
+Manages 7-tier memory CRUD, metadata provenance, automatic invalidation,
+JSON import/export serialization, and memory ablation benchmark controllers.
 """
 
 from .tiered_store import TieredMemoryStore
@@ -20,6 +20,10 @@ from .memory_exporter import (
     export_memory_tier,
     import_memory,
 )
+from .ablation import (
+    MemoryAblationController,
+    MemoryAblationMode,
+)
 
 __all__ = [
     "TieredMemoryStore",
@@ -31,4 +35,6 @@ __all__ = [
     "MemoryExporter",
     "export_memory_tier",
     "import_memory",
+    "MemoryAblationController",
+    "MemoryAblationMode",
 ]

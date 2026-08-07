@@ -3,7 +3,16 @@ Pydantic v2 Input/Output Schemas Package.
 Member 2 — Backend Core & Model Adapter Lead
 """
 
-from backend.core.schemas.session import Session, SessionCreate, SessionResponse, SessionStatus
+from backend.core.schemas.session import (
+    Session,
+    SessionCreate,
+    SessionResponse,
+    SessionStatus,
+    SessionStateCheckpoint,
+    SessionResumeRequest,
+    ModelBenchmarkMetrics,
+    FinancialSummaryReport,
+)
 from backend.core.schemas.task_graph import TaskGraphNode, NodeStatus, TaskType, TaskGraph
 from backend.core.schemas.tool_call import ToolCall, ToolCallResult, CommandScope, ApprovalRequest, ApprovalResponse
 from backend.core.schemas.memory import MemoryItem, MemoryTier, ProvenanceMetadata
@@ -15,6 +24,10 @@ __all__ = [
     "SessionCreate",
     "SessionResponse",
     "SessionStatus",
+    "SessionStateCheckpoint",
+    "SessionResumeRequest",
+    "ModelBenchmarkMetrics",
+    "FinancialSummaryReport",
     "TaskGraphNode",
     "NodeStatus",
     "TaskType",
