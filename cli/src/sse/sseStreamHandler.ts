@@ -16,12 +16,27 @@ export interface SSEStreamState {
 export function handleIncomingSSEEvent(prevState: SSEStreamState, event: SSEEvent): SSEStreamState {
   switch (event.type) {
     case 'intake_progress': {
-      const updatedSteps = prevState.intakeSteps.map((s) =>
-        s.step === event.step
-          ? { ...s, completed: event.completed, running: false, detail: event.detail }
-          : s
-      );
-      const isReady = updatedSteps.every((s) => s.completed);
+      const existingIndex = prevState.intakeSteps.findIndex((s) => s.step === event.step);
+      let updatedSteps = [...prevState.intakeSteps];
+
+      if (existingIndex >= 0) {
+        updatedSteps[existingIndex] = {
+          ...updatedSteps[existingIndex],
+          completed: event.completed,
+          running: !event.completed,
+          detail: event.detail
+        };
+      } else {
+        updatedSteps.push({
+          id: String(updatedSteps.length + 1),
+          step: event.step,
+          completed: event.completed,
+          running: !event.completed,
+          detail: event.detail
+        });
+      }
+
+      const isReady = updatedSteps.length > 0 && updatedSteps.every((s) => s.completed);
       return {
         ...prevState,
         intakeSteps: updatedSteps,

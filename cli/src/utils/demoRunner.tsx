@@ -9,7 +9,7 @@ export const AutomatedDemoContainer: React.FC = () => {
     sessionId: 'ae-demo-2026',
     repoName: 'Billu-Gang',
     branch: 'main',
-    modelProvider: 'claude-3-5-sonnet',
+    modelProvider: 'gemini-3.5-flash-lite',
     elapsedSeconds: 0,
     tokensUsed: 0,
     costSoFar: 0.0,

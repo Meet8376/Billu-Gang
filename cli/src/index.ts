@@ -14,7 +14,7 @@ program
   .command('init')
   .description('Initialize and scan target repository for agentic harness session')
   .option('-r, --repo <path>', 'Path to target repository workspace', '.')
-  .option('-m, --model <provider>', 'LLM Provider / Model identity', 'claude-3-5-sonnet')
+  .option('-m, --model <provider>', 'LLM Provider / Model identity', 'gemini-3.5-flash-lite')
   .action((options) => {
     runRepl(options.repo, options.model);
   });
@@ -23,7 +23,7 @@ program
   .command('run')
   .description('Start autonomous coding run on specified issue')
   .option('-r, --repo <path>', 'Target repo', '.')
-  .option('-m, --model <provider>', 'Model backend', 'claude-3-5-sonnet')
+  .option('-m, --model <provider>', 'Model backend', 'gemini-3.5-flash-lite')
   .action((options) => {
     runRepl(options.repo, options.model);
   });
@@ -32,7 +32,7 @@ program
   .command('review')
   .description('Open Reviewer Summary view for completed task')
   .action(() => {
-    runRepl('.', 'claude-3-5-sonnet');
+    runRepl('.', 'gemini-3.5-flash-lite');
   });
 
 program
@@ -45,5 +45,5 @@ program
 program.parse(process.argv);
 
 if (!process.argv.slice(2).length) {
-  runRepl('.', 'claude-3-5-sonnet');
+  runRepl('.', 'gemini-3.5-flash-lite');
 }

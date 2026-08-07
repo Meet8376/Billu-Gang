@@ -14,7 +14,7 @@ class GeminiAdapter(LangChainAdapter):
 
     def __init__(
         self,
-        model_name: str = "gemini-1.5-pro",
+        model_name: str = "gemini-3.5-flash-lite",
         api_key: Optional[str] = None,
         chat_model: Optional[Any] = None,
     ):

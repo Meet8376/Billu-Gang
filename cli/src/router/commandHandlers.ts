@@ -1,11 +1,13 @@
 import { ParsedSlashCommand } from './SlashCommandRouter.js';
 import { BackendApiClient } from '../api/BackendApiClient.js';
+import { MemoryItem } from '../api/apiTypes.js';
 
 export interface CommandExecutionResult {
   handledLocally: boolean;
   activeViewTarget?: 'intake' | 'graph' | 'diff' | 'trace' | 'summary' | 'memory' | 'benchmark';
   fileFilter?: string;
   feedbackMessage?: string;
+  memoryItems?: MemoryItem[];
 }
 
 export async function handleSlashCommand(
@@ -57,6 +59,7 @@ export async function handleSlashCommand(
       return {
         handledLocally: true,
         activeViewTarget: 'memory',
+        memoryItems: items,
         feedbackMessage: `Switched to Memory Inspect View (${items.length} items loaded).`
       };
 

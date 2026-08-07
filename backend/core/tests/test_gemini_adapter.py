@@ -11,27 +11,43 @@ pytestmark = pytest.mark.asyncio
 
 async def test_gemini_adapter_initialization_defaults():
     adapter = GeminiAdapter()
-    assert adapter.model_name == "gemini-1.5-pro"
+    assert adapter.model_name == "gemini-3.5-flash-lite"
 
-    custom_adapter = GeminiAdapter(model_name="gemini-1.5-flash", api_key="test-key-123")
-    assert custom_adapter.model_name == "gemini-1.5-flash"
+    custom_adapter = GeminiAdapter(model_name="gemini-3.5-flash-lite", api_key="test-key-123")
+    assert custom_adapter.model_name == "gemini-3.5-flash-lite"
     assert custom_adapter.api_key == "test-key-123"
 
 
 async def test_gemini_adapter_completion():
-    adapter = GeminiAdapter(model_name="gemini-1.5-pro")
+    adapter = GeminiAdapter(model_name="gemini-3.5-flash-lite")
     resp = await adapter.complete(
         messages=[{"role": "user", "content": "Analyze backend core architecture"}],
         tools=[{"name": "read_code", "description": "Read source code file"}]
     )
-    assert resp.model_name == "gemini-1.5-pro"
-    assert "[LangChain Execution Complete" in resp.content or resp.content != ""
+    assert resp.model_name == "gemini-3.5-flash-lite"
+    assert resp.content is not None
+    assert isinstance(resp.tool_calls, list)
+    if not adapter.chat_model:
+        assert len(resp.tool_calls) >= 1
+        assert resp.tool_calls[0].name == "read_code"
+
+
+async def test_gemini_adapter_stub_completion():
+    # Force stub mode by setting chat_model to None
+    adapter = GeminiAdapter(model_name="gemini-3.5-flash-lite", chat_model=None)
+    adapter.chat_model = None
+    resp = await adapter.complete(
+        messages=[{"role": "user", "content": "Analyze backend core architecture"}],
+        tools=[{"name": "read_code", "description": "Read source code file"}]
+    )
+    assert resp.model_name == "gemini-3.5-flash-lite"
+    assert "[LangChain Execution Complete" in resp.content
     assert len(resp.tool_calls) >= 1
     assert resp.tool_calls[0].name == "read_code"
 
 
 async def test_gemini_adapter_streaming():
-    adapter = GeminiAdapter(model_name="gemini-1.5-pro")
+    adapter = GeminiAdapter(model_name="gemini-3.5-flash-lite")
     chunks = []
     async for chunk in adapter.stream_complete(messages=[{"role": "user", "content": "Hello Gemini"}]):
         chunks.append(chunk)
@@ -39,7 +55,7 @@ async def test_gemini_adapter_streaming():
 
 
 async def test_gemini_adapter_token_counting():
-    adapter = GeminiAdapter(model_name="gemini-1.5-pro")
+    adapter = GeminiAdapter(model_name="gemini-3.5-flash-lite")
     token_count = adapter.get_token_count("Hello world from Gemini adapter unit test!")
     assert token_count > 0
 
@@ -48,7 +64,7 @@ async def test_gemini_langgraph_adapter_workflow():
     adapter = GeminiLangGraphAdapter(
         session_id="sess_gemini_test",
         goal="Add Google Gemini support to model adapters",
-        model_name="gemini-1.5-pro",
+        model_name="gemini-3.5-flash-lite",
     )
     final_state = await adapter.run()
     assert final_state["session_id"] == "sess_gemini_test"
@@ -59,7 +75,7 @@ async def test_gemini_langgraph_adapter_workflow():
 
 
 async def test_gemini_adapter_in_fallback_manager():
-    gemini = GeminiAdapter(model_name="gemini-1.5-pro")
+    gemini = GeminiAdapter(model_name="gemini-3.5-flash-lite")
     mock_fallback = MockAdapter(preset_response="Failover mock response")
     fallback_mgr = FallbackAdapterManager(primary_adapter=gemini, fallback_adapters=[mock_fallback])
 

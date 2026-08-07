@@ -1,4 +1,5 @@
 import { SessionInfo, ReviewerSummary, MemoryItem } from './apiTypes.js';
+import { parseRepoName } from '../utils/formatters.js';
 
 export class BackendApiClient {
   private baseUrl: string;
@@ -25,9 +26,9 @@ export class BackendApiClient {
       const data = await response.json();
       return {
         sessionId: data.session_id || 'ae-sess-001',
-        repoName: (data.workspace_path || repoPath).split(/[\/\\]/).pop() || 'Billu-Gang',
+        repoName: parseRepoName(data.workspace_path || repoPath),
         branch: 'main',
-        modelProvider: model || 'gpt-4o',
+        modelProvider: model || 'gemini-3.5-flash-lite',
         elapsedSeconds: 0,
         tokensUsed: data.total_tokens_used || 0,
         costSoFar: data.total_cost_usd || 0.0,
@@ -38,9 +39,9 @@ export class BackendApiClient {
       // Fallback mock session for local testing / offline phase
       return {
         sessionId: 'ae-sess-001',
-        repoName: repoPath.split(/[\/\\]/).pop() || 'Billu-Gang',
+        repoName: parseRepoName(repoPath),
         branch: 'main',
-        modelProvider: model || 'claude-3-5-sonnet',
+        modelProvider: model || 'gemini-3.5-flash-lite',
         elapsedSeconds: 0,
         tokensUsed: 0,
         costSoFar: 0.0,

@@ -49,8 +49,8 @@ async def test_mock_adapter_custom_tool_calls():
 
 
 async def test_gemini_adapter_integration():
-    adapter = GeminiAdapter(model_name="gemini-1.5-pro")
+    adapter = GeminiAdapter(model_name="gemini-3.5-flash-lite")
     resp = await adapter.complete(messages=[{"role": "user", "content": "Test Gemini adapter integration"}])
-    assert resp.model_name == "gemini-1.5-pro"
+    assert resp.model_name == "gemini-3.5-flash-lite"
     assert resp.content is not None
 

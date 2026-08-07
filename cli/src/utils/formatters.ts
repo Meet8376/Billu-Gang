@@ -29,3 +29,14 @@ export function formatTruncatedPath(path: string, maxLength: number = 30): strin
   if (path.length <= maxLength) return path;
   return '...' + path.slice(-maxLength + 3);
 }
+
+export function parseRepoName(repoPath: string): string {
+  if (!repoPath) return 'Billu-Gang';
+  let cleaned = repoPath.trim().replace(/[\/\\]+$/, '');
+  if (cleaned.endsWith('.git')) {
+    cleaned = cleaned.slice(0, -4);
+  }
+  const segments = cleaned.split(/[\/\\]/);
+  const last = segments[segments.length - 1];
+  return last || 'Billu-Gang';
+}

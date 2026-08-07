@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { render } from 'ink';
 import { Layout, ActiveView } from './components/Layout.js';
-import { SessionInfo, TaskGraphNode, VerificationItem } from './api/apiTypes.js';
+import { SessionInfo, TaskGraphNode, VerificationItem, MemoryItem } from './api/apiTypes.js';
 import { IntakeStep } from './components/views/IntakeView.js';
 import { SSEClient } from './sse/SSEClient.js';
 import { startMockSSEStream } from './sse/mockSSEListener.js';
@@ -9,6 +9,7 @@ import { handleIncomingSSEEvent, SSEStreamState } from './sse/sseStreamHandler.j
 import { SlashCommandRouter } from './router/SlashCommandRouter.js';
 import { BackendApiClient } from './api/BackendApiClient.js';
 import { handleSlashCommand } from './router/commandHandlers.js';
+import { parseRepoName } from './utils/formatters.js';
 
 export interface AppProps {
   initialRepoPath: string;
@@ -19,14 +20,14 @@ export interface AppProps {
 export const AppContainer: React.FC<AppProps> = ({
   initialRepoPath,
   initialModel,
-  useMockStream = true
+  useMockStream = process.env.USE_MOCK === 'true'
 }) => {
   const [streamState, setStreamState] = useState<SSEStreamState>({
     session: {
       sessionId: 'ae-sess-001',
-      repoName: initialRepoPath.split(/[\/\\]/).pop() || 'Billu-Gang',
+      repoName: parseRepoName(initialRepoPath),
       branch: 'main',
-      modelProvider: initialModel,
+      modelProvider: initialModel || 'gemini-3.5-flash-lite',
       elapsedSeconds: 0,
       tokensUsed: 0,
       costSoFar: 0.0,
@@ -39,34 +40,19 @@ export const AppContainer: React.FC<AppProps> = ({
       { id: '3', step: 'Mapping test-to-source relationships', completed: false }
     ],
     intakeReady: false,
-    taskTitle: 'Fix off-by-one error in pagination',
+    taskTitle: 'Initialize Session & Scan Repository Workspace',
     taskNodes: [
-      { id: '1', label: 'Reproduce issue', status: 'done' },
-      { id: '2', label: 'Locate relevant source', status: 'done' },
-      { id: '3', label: 'Draft patch', status: 'running', detail: 'Modifying paginator.py' },
-      { id: '3a', label: 'Modify paginator.py', status: 'running', parentId: '3' },
-      { id: '3b', label: 'Update tests', status: 'pending', parentId: '3' },
-      { id: '4', label: 'Run verification suite', status: 'pending' },
-      { id: '5', label: 'Reviewer summary', status: 'pending' }
+      { id: '1', label: 'Scanning workspace', status: 'running' },
+      { id: '2', label: 'Building symbol graph', status: 'pending' },
+      { id: '3', label: 'Run verification suite', status: 'pending' }
     ],
-    verifications: [
-      { name: 'build', status: 'passed', durationSeconds: 3.2 },
-      { name: 'lint', status: 'passed', durationSeconds: 0.8 },
-      { name: 'type check', status: 'passed', durationSeconds: 1.1 },
-      { name: 'unit tests (312)', status: 'passed', durationSeconds: 11.4 },
-      {
-        name: 'regression tests (18)',
-        status: 'failed',
-        durationSeconds: 4.7,
-        errorReason: 'test_pagination_last_page AssertionError'
-      }
-    ],
-    logs: ['[12:40:01] System initialized in Docker sandbox.'],
-    recoveringReason: 're-inspecting failing test (regression tests) → patching'
+    verifications: [],
+    logs: ['[12:40:01] System initialized in Docker sandbox.']
   });
 
   const [activeViewOverride, setActiveViewOverride] = useState<ActiveView | undefined>(undefined);
   const [diffFileFilter, setDiffFileFilter] = useState<string | undefined>(undefined);
+  const [memoryItems, setMemoryItems] = useState<MemoryItem[]>([]);
 
   const [sseClient] = useState(() => new SSEClient());
   const [apiClient] = useState(() => new BackendApiClient());
@@ -112,6 +98,9 @@ export const AppContainer: React.FC<AppProps> = ({
       if (result.fileFilter) {
         setDiffFileFilter(result.fileFilter);
       }
+      if (result.memoryItems) {
+        setMemoryItems(result.memoryItems);
+      }
     } else {
       await apiClient.submitIssue(streamState.session.sessionId, input);
       setActiveViewOverride('graph');
@@ -126,12 +115,13 @@ export const AppContainer: React.FC<AppProps> = ({
       intakeReady={streamState.intakeReady}
       taskTitle={streamState.taskTitle}
       taskNodes={streamState.taskNodes}
+      memoryItems={memoryItems}
       activeViewOverride={activeViewOverride}
       diffFileFilter={diffFileFilter}
     />
   );
 };
 
-export function runRepl(repoPath: string = '.', model: string = 'claude-3-5-sonnet') {
+export function runRepl(repoPath: string = '.', model: string = 'gemini-3.5-flash-lite') {
   render(<AppContainer initialRepoPath={repoPath} initialModel={model} />);
 }

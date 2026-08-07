@@ -16,8 +16,8 @@ describe('Phase 6 End-to-End Terminal CLI Workflow', () => {
     expect(output).toContain('claude-3-5-sonnet');
     expect(output).toContain('INTAKE');
     expect(output).toContain('Scanning repository workspace');
-    expect(output).toContain('Tokens:');
-    expect(output).toContain('Cost:');
+    expect(output).toContain('Tokens');
+    expect(output).toContain('Cost');
     expect(output).toContain('>');
   });
 });

@@ -11,7 +11,7 @@ import { TraceView } from './views/TraceView.js';
 import { ReviewerSummaryView } from './views/ReviewerSummaryView.js';
 import { MemoryInspectView } from './views/MemoryInspectView.js';
 import { BenchmarkView } from './views/BenchmarkView.js';
-import { SessionInfo, TaskGraphNode } from '../api/apiTypes.js';
+import { SessionInfo, TaskGraphNode, MemoryItem } from '../api/apiTypes.js';
 
 export type ActiveView = 'intake' | 'graph' | 'diff' | 'trace' | 'summary' | 'memory' | 'benchmark';
 
@@ -22,6 +22,7 @@ interface LayoutProps {
   intakeReady: boolean;
   taskTitle: string;
   taskNodes: TaskGraphNode[];
+  memoryItems?: MemoryItem[];
   activeViewOverride?: ActiveView;
   diffFileFilter?: string;
   pendingApproval?: { command: string; reason: string };
@@ -35,6 +36,7 @@ export const Layout: React.FC<LayoutProps> = ({
   intakeReady,
   taskTitle,
   taskNodes,
+  memoryItems,
   activeViewOverride,
   diffFileFilter,
   pendingApproval,
@@ -88,7 +90,7 @@ export const Layout: React.FC<LayoutProps> = ({
       case 'summary':
         return <ReviewerSummaryView />;
       case 'memory':
-        return <MemoryInspectView />;
+        return <MemoryInspectView memoryItems={memoryItems} />;
       case 'benchmark':
         return <BenchmarkView />;
       default:

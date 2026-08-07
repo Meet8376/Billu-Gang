@@ -18,7 +18,7 @@ class GeminiLangGraphAdapter:
         session_id: str,
         goal: str,
         model_adapter: Optional[ModelAdapter] = None,
-        model_name: str = "gemini-1.5-pro",
+        model_name: str = "gemini-3.5-flash-lite",
     ):
         self.session_id = session_id
         self.goal = goal
