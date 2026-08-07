@@ -87,3 +87,18 @@ def test_rollback_endpoint():
     data = response.json()
     assert data["success"] is True
     assert data["target_checkpoint_id"] == "chk_001"
+
+
+def test_openapi_documentation_availability():
+    openapi_resp = client.get("/openapi.json")
+    assert openapi_resp.status_code == 200
+    schema = openapi_resp.json()
+    assert "openapi" in schema
+    assert "info" in schema
+    assert schema["info"]["title"] == "AE-01 Unified Agentic Coding Harness - Backend Core"
+    assert len(schema["tags"]) >= 9
+
+    docs_resp = client.get("/docs")
+    assert docs_resp.status_code == 200
+    assert "swagger-ui" in docs_resp.text.lower() or "<html" in docs_resp.text.lower()
+

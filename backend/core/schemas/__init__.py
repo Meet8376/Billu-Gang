@@ -18,6 +18,7 @@ from backend.core.schemas.tool_call import ToolCall, ToolCallResult, CommandScop
 from backend.core.schemas.memory import MemoryItem, MemoryTier, ProvenanceMetadata
 from backend.core.schemas.evidence import EvidenceRecord, VerificationRun, EvidenceType
 from backend.core.schemas.sse_events import SSEEvent, EventType
+from backend.core.schemas.security import LeakDetail, SecurityAuditReport, SanitizeRequest, SanitizeResponse
 
 __all__ = [
     "Session",
@@ -45,4 +46,8 @@ __all__ = [
     "EvidenceType",
     "SSEEvent",
     "EventType",
+    "LeakDetail",
+    "SecurityAuditReport",
+    "SanitizeRequest",
+    "SanitizeResponse",
 ]
