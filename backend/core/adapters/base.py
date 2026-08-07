@@ -5,19 +5,27 @@ Member 2 — Backend Core & Model Adapter Lead
 
 from abc import ABC, abstractmethod
 from typing import AsyncGenerator, Dict, Any, List, Optional
-from pydantic import BaseModel
-# pyrefly: ignore [missing-import]
-from langchain_core.messages import BaseMessage, HumanMessage, SystemMessage, AIMessage
+from pydantic import BaseModel, Field
+from langchain_core.messages import BaseMessage, HumanMessage, SystemMessage, AIMessage, ToolMessage
+
+
+class ToolCallData(BaseModel):
+    """Structured tool call data extracted from LLM completions."""
+    id: str
+    name: str
+    args: Dict[str, Any] = Field(default_factory=dict)
 
 
 class CompletionResponse(BaseModel):
-    """Model completion response representation."""
+    """Complete model completion response representation."""
     content: str
-    tool_calls: List[Dict[str, Any]] = []
+    tool_calls: List[ToolCallData] = Field(default_factory=list)
     input_tokens: int = 0
     output_tokens: int = 0
+    total_tokens: int = 0
     model_name: str = ""
     finish_reason: str = "stop"
+    cost_usd: float = 0.0
     raw_message: Optional[Any] = None
 
 
@@ -57,6 +65,25 @@ class ModelAdapter(ABC):
         """Calculate token count for given text."""
         pass
 
+    def format_tool_schemas(self, tools: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        """Normalize tool specifications into standard OpenAI/LangChain function call schemas."""
+        formatted = []
+        for tool in tools:
+            if "type" in tool and tool["type"] == "function":
+                formatted.append(tool)
+            elif "name" in tool:
+                formatted.append({
+                    "type": "function",
+                    "function": {
+                        "name": tool["name"],
+                        "description": tool.get("description", ""),
+                        "parameters": tool.get("parameters", {"type": "object", "properties": {}}),
+                    }
+                })
+            else:
+                formatted.append(tool)
+        return formatted
+
     def _convert_to_langchain_messages(
         self,
         messages: List[Dict[str, Any]],
@@ -66,6 +93,7 @@ class ModelAdapter(ABC):
         langchain_msgs: List[BaseMessage] = []
         if system_prompt:
             langchain_msgs.append(SystemMessage(content=system_prompt))
+
         for msg in messages:
             role = msg.get("role", "user")
             content = msg.get("content", "")
@@ -73,6 +101,10 @@ class ModelAdapter(ABC):
                 langchain_msgs.append(SystemMessage(content=content))
             elif role == "assistant":
                 langchain_msgs.append(AIMessage(content=content))
+            elif role == "tool":
+                tool_call_id = msg.get("tool_call_id", "")
+                langchain_msgs.append(ToolMessage(content=content, tool_call_id=tool_call_id))
             else:
                 langchain_msgs.append(HumanMessage(content=content))
+
         return langchain_msgs

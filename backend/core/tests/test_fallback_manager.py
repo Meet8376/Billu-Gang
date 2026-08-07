@@ -6,8 +6,9 @@ Member 2 — Backend Core & Model Adapter Lead
 import pytest
 from backend.core.adapters import MockAdapter, FallbackAdapterManager
 
+pytestmark = pytest.mark.asyncio
 
-@pytest.mark.asyncio
+
 async def test_fallback_manager_success():
     primary = MockAdapter(model_name="primary-mock")
     fallback = MockAdapter(model_name="fallback-mock")

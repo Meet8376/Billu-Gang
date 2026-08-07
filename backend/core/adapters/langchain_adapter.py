@@ -4,9 +4,8 @@ Member 2 — Backend Core & Model Adapter Lead
 """
 
 from typing import AsyncGenerator, Dict, Any, List, Optional
-# pyrefly: ignore [missing-import]
 from langchain_core.language_models.chat_models import BaseChatModel
-from backend.core.adapters.base import ModelAdapter, CompletionResponse
+from backend.core.adapters.base import ModelAdapter, CompletionResponse, ToolCallData
 
 
 class LangChainAdapter(ModelAdapter):
@@ -35,26 +34,57 @@ class LangChainAdapter(ModelAdapter):
         if self.chat_model:
             model_to_use = self.chat_model
             if tools:
-                model_to_use = model_to_use.bind_tools(tools)
+                formatted_tools = self.format_tool_schemas(tools)
+                model_to_use = model_to_use.bind_tools(formatted_tools)
+
             ai_msg = await model_to_use.ainvoke(lc_messages)
-            content = str(ai_msg.content)
-            tool_calls = getattr(ai_msg, "tool_calls", [])
+            content = str(ai_msg.content or "")
+
+            raw_tool_calls = getattr(ai_msg, "tool_calls", [])
+            extracted_tool_calls = [
+                ToolCallData(
+                    id=tc.get("id", f"call_{i}"),
+                    name=tc.get("name", ""),
+                    args=tc.get("args", {})
+                )
+                for i, tc in enumerate(raw_tool_calls)
+            ]
+
+            usage_metadata = getattr(ai_msg, "usage_metadata", {}) or {}
+            input_tokens = usage_metadata.get("input_tokens", len(str(messages)) // 4)
+            output_tokens = usage_metadata.get("output_tokens", len(content) // 4)
+            total_tokens = usage_metadata.get("total_tokens", input_tokens + output_tokens)
+
             return CompletionResponse(
                 content=content,
-                tool_calls=tool_calls,
-                input_tokens=15,
-                output_tokens=25,
+                tool_calls=extracted_tool_calls,
+                input_tokens=input_tokens,
+                output_tokens=output_tokens,
+                total_tokens=total_tokens,
                 model_name=self.model_name,
                 finish_reason="stop",
                 raw_message=ai_msg,
             )
 
-        # Return structured stub response if no explicit chat_model instance provided
+        # Fallback structured mock execution if no live chat_model instance is injected
+        mock_content = f"[LangChain Execution Complete for '{self.model_name}']"
+        mock_tool_calls = []
+        if tools:
+            first_tool = tools[0]
+            tool_name = first_tool.get("name", "unknown_tool")
+            mock_tool_calls.append(
+                ToolCallData(id="call_mock_1", name=tool_name, args={"query": "test"})
+            )
+
+        in_tok = len(str(messages)) // 4
+        out_tok = len(mock_content) // 4
+
         return CompletionResponse(
-            content=f"[LangChain Adapter Stub Response for model '{self.model_name}']",
-            tool_calls=[],
-            input_tokens=15,
-            output_tokens=25,
+            content=mock_content,
+            tool_calls=mock_tool_calls,
+            input_tokens=in_tok,
+            output_tokens=out_tok,
+            total_tokens=in_tok + out_tok,
             model_name=self.model_name,
             finish_reason="stop",
         )
@@ -71,12 +101,14 @@ class LangChainAdapter(ModelAdapter):
         lc_messages = self._convert_to_langchain_messages(messages, system_prompt)
         if self.chat_model:
             async for chunk in self.chat_model.astream(lc_messages):
-                yield str(chunk.content)
+                yield str(chunk.content or "")
         else:
-            yield f"[LangChain Stream Chunk for '{self.model_name}']"
+            chunks = [f"[LangChain ", "Streaming ", f"Chunk for '{self.model_name}']"]
+            for c in chunks:
+                yield c
 
     def get_token_count(self, text: str) -> int:
-        """Calculate token count using LangChain model estimator."""
+        """Calculate token count using LangChain model estimator or fallback heuristic."""
         if self.chat_model and hasattr(self.chat_model, "get_num_tokens"):
             return self.chat_model.get_num_tokens(text)
-        return len(text) // 4
+        return max(1, len(text) // 4)

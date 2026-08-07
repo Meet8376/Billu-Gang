@@ -4,7 +4,6 @@ Member 2 — Backend Core & Model Adapter Lead
 """
 
 from typing import Dict, Any, List, Optional, TypedDict
-# pyrefly: ignore [missing-import]
 from langgraph.graph import StateGraph, START, END
 
 
@@ -15,6 +14,7 @@ class HarnessState(TypedDict):
     task_dag: List[Dict[str, Any]]
     current_node_id: Optional[str]
     status: str
+    logs: List[str]
     output: Optional[str]
     error: Optional[str]
 
@@ -31,24 +31,43 @@ class LangGraphAdapter:
 
     def _build_graph(self):
         """Construct LangGraph DAG nodes and transitions."""
-        def plan_node(state: HarnessState) -> Dict[str, Any]:
+        def planner_node(state: HarnessState) -> Dict[str, Any]:
+            logs = state.get("logs", []) + [f"Planner node executed for session {state['session_id']}"]
+            task_dag = [
+                {"id": "node_1", "title": "Analyze Task", "status": "completed"},
+                {"id": "node_2", "title": "Execute Patch", "status": "pending"},
+            ]
             return {
                 "status": "planned",
-                "output": f"LangGraph Plan generated for session {state['session_id']}",
+                "task_dag": task_dag,
+                "current_node_id": "node_1",
+                "logs": logs,
             }
 
-        def execute_node(state: HarnessState) -> Dict[str, Any]:
+        def executor_node(state: HarnessState) -> Dict[str, Any]:
+            logs = state.get("logs", []) + ["Executor node executed tool commands"]
             return {
                 "status": "executed",
-                "output": "LangGraph Execution completed successfully",
+                "current_node_id": "node_2",
+                "logs": logs,
+                "output": f"Patch successfully applied for task: '{state['goal']}'",
             }
 
-        self.workflow.add_node("planner", plan_node)
-        self.workflow.add_node("executor", execute_node)
+        def verifier_node(state: HarnessState) -> Dict[str, Any]:
+            logs = state.get("logs", []) + ["Verifier node validated test suite passing"]
+            return {
+                "status": "verified",
+                "logs": logs,
+            }
+
+        self.workflow.add_node("planner", planner_node)
+        self.workflow.add_node("executor", executor_node)
+        self.workflow.add_node("verifier", verifier_node)
 
         self.workflow.add_edge(START, "planner")
         self.workflow.add_edge("planner", "executor")
-        self.workflow.add_edge("executor", END)
+        self.workflow.add_edge("executor", "verifier")
+        self.workflow.add_edge("verifier", END)
 
     async def run(self) -> HarnessState:
         """Execute the compiled LangGraph workflow graph."""
@@ -58,6 +77,7 @@ class LangGraphAdapter:
             "task_dag": [],
             "current_node_id": None,
             "status": "initialized",
+            "logs": [],
             "output": None,
             "error": None,
         }

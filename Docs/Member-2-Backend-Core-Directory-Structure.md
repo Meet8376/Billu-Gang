@@ -122,3 +122,29 @@ Phase 1 (H0-H3) ──► Phase 2 (H3-H8) ──► Phase 3 (H8-H13) ──► P
 - **Backend Core ↔ Model Providers:** Direct HTTP calls using `httpx` / official Anthropic & OpenAI SDKs inside `adapters/`.
 - **Backend Core ↔ Orchestrator:** Provides `ModelAdapter` interface to `TaskGraphOrchestrator` for generating plans and patches.
 - **Backend Core ↔ CLI:** Exposes OpenAPI REST endpoints and `sse-starlette` stream broadcast.
+
+---
+
+## 6. Completed Implementation Summary (Phases 1 to 3)
+
+### Phase 1 (Hours 0–3): FastAPI Skeleton & Pydantic Schemas
+- **FastAPI Core (`backend/core/main.py`, `config.py`):** Configured application factory with CORS middleware, health check endpoint (`/health`), and `/api/v1` route mounting.
+- **Pydantic v2 Schemas (`backend/core/schemas/`):** Implemented input/output models: `Session`, `SessionCreate`, `TaskGraphNode`, `ToolCall`, `MemoryItem`, `EvidenceRecord`, `SSEEvent`.
+- **REST Route Stubs (`backend/core/routes/`):** Established routers for session, plan, run, memory, trace, rollback, and SSE endpoints.
+
+### Phase 2 (Hours 3–8): LangChain & LangGraph Adapters & Token/Cost Engine
+- **Model Adapter Layer (`backend/core/adapters/`):**
+  - Built `ModelAdapter` ABC with `ToolCallData` extraction and message converters.
+  - Implemented `LangChainAdapter` leveraging LangChain `BaseChatModel`, tool schema binding (`bind_tools`), and async streaming (`astream`).
+  - Implemented `LangGraphAdapter` using LangGraph `StateGraph` with `planner`, `executor`, and `verifier` nodes.
+  - Enhanced `MockAdapter` for zero-cost offline harness testing.
+- **Token & Cost Engine (`backend/core/tracking/`):**
+  - Implemented `token_counter.py` supporting single string text and complete message lists (`count_tokens_for_messages`) using `tiktoken`.
+  - Built `CostTracker` with USD pricing tables ($/1k tokens), usage log records, budget limit checks, and warning threshold alerts (`is_warning_threshold_reached`).
+
+### Phase 3 (Hours 8–13): Execution Loop Wiring, SSE Queue & Rollback Endpoint
+- **Execution Loop Wiring (`backend/core/routes/plan_routes.py`, `run_routes.py`):** Wired `LangGraphAdapter` to generate task graph DAGs on `/api/v1/plan` and `/api/v1/plan/replan`. Wired `LangChainAdapter` model completions to `/api/v1/run/start`.
+- **PubSub SSE Event Queue (`backend/core/routes/sse_routes.py`):** Implemented `SSEBroadcaster` with `asyncio.Queue` event subscription/publishing for live CLI streaming (`plan_updated`, `tool_started`, `tool_finished`, `cost_updated`).
+- **Workspace Rollback Endpoint (`backend/core/routes/rollback_routes.py`):** Implemented `/api/v1/rollback` handling target checkpoint selection, patch reversal triggers, and status verification notifications.
+- **Unit Test Suite (`backend/core/tests/`):** Verified route endpoints, adapter execution, fallback manager, cost tracking, and SSE broadcaster routes.
+
