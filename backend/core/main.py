@@ -1,10 +1,11 @@
 """
-FastAPI Application Factory, Middleware & Router Registration.
+FastAPI Application Factory, Middleware, Router Registration & Exception Handlers.
 Member 2 — Backend Core & Model Adapter Lead
 """
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request, status
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 
 from backend.core.config import settings
 from backend.core.routes import (
@@ -37,6 +38,21 @@ def get_application() -> FastAPI:
         allow_methods=["*"],
         allow_headers=["*"],
     )
+
+    # Register Custom Exception Handlers to Prevent Backend Crashes
+    @app.exception_handler(ValueError)
+    async def value_error_handler(request: Request, exc: ValueError):
+        return JSONResponse(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            content={"error": "Invalid Value", "detail": str(exc)},
+        )
+
+    @app.exception_handler(RuntimeError)
+    async def runtime_error_handler(request: Request, exc: RuntimeError):
+        return JSONResponse(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            content={"error": "Model Provider Runtime Error", "detail": str(exc)},
+        )
 
     # Register Routers under /api/v1
     app.include_router(session_routes.router, prefix="/api/v1", tags=["Session"])

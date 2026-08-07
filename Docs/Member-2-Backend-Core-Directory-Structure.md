@@ -125,7 +125,7 @@ Phase 1 (H0-H3) ──► Phase 2 (H3-H8) ──► Phase 3 (H8-H13) ──► P
 
 ---
 
-## 6. Completed Implementation Summary (Phases 1 to 3)
+## 6. Completed Implementation Summary (Phases 1 to 4)
 
 ### Phase 1 (Hours 0–3): FastAPI Skeleton & Pydantic Schemas
 - **FastAPI Core (`backend/core/main.py`, `config.py`):** Configured application factory with CORS middleware, health check endpoint (`/health`), and `/api/v1` route mounting.
@@ -146,5 +146,11 @@ Phase 1 (H0-H3) ──► Phase 2 (H3-H8) ──► Phase 3 (H8-H13) ──► P
 - **Execution Loop Wiring (`backend/core/routes/plan_routes.py`, `run_routes.py`):** Wired `LangGraphAdapter` to generate task graph DAGs on `/api/v1/plan` and `/api/v1/plan/replan`. Wired `LangChainAdapter` model completions to `/api/v1/run/start`.
 - **PubSub SSE Event Queue (`backend/core/routes/sse_routes.py`):** Implemented `SSEBroadcaster` with `asyncio.Queue` event subscription/publishing for live CLI streaming (`plan_updated`, `tool_started`, `tool_finished`, `cost_updated`).
 - **Workspace Rollback Endpoint (`backend/core/routes/rollback_routes.py`):** Implemented `/api/v1/rollback` handling target checkpoint selection, patch reversal triggers, and status verification notifications.
-- **Unit Test Suite (`backend/core/tests/`):** Verified route endpoints, adapter execution, fallback manager, cost tracking, and SSE broadcaster routes.
+
+### Phase 4 (Hours 13–17): Provider Fallback, Session Persistence & Error Recovery
+- **Automatic Provider Failover (`backend/core/adapters/fallback_manager.py`):** Enhanced `FallbackAdapterManager` with automatic multi-tier failover (Primary LLM -> Secondary LLM -> Mock Adapter), logging failover records, and broadcasting `error_occurred` / `fallback_triggered` SSE events.
+- **Session State Persistence & Resumption (`backend/core/schemas/session.py`, `session_routes.py`):** Added `SessionStateCheckpoint` schema and endpoints: `POST /api/v1/session/{session_id}/resume` and `GET /api/v1/session/{session_id}/export`.
+- **Robust Exception Handlers (`backend/core/main.py`):** Configured custom FastAPI exception handlers returning standardized JSON error responses to prevent backend crashes on malformed LLM outputs or rate limits.
+- **Phase 4 Unit Test Suite (`backend/core/tests/`):** Added unit test coverage for provider failover scenarios (`test_fallback_manager.py`) and session export/resume endpoints (`test_routes.py`).
+
 

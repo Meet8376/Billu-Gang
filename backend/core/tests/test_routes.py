@@ -1,5 +1,5 @@
 """
-Phase 3 Unit Tests for FastAPI REST Endpoints.
+Phase 4 Unit Tests for FastAPI REST Endpoints & Session Persistence.
 Member 2 — Backend Core & Model Adapter Lead
 """
 
@@ -28,6 +28,32 @@ def test_create_session():
     data = response.json()
     assert "session_id" in data
     assert data["status"] == "idle"
+
+
+def test_export_and_resume_session():
+    # 1. Create session
+    payload = {
+        "workspace_path": "/tmp/test-workspace-persisted",
+        "goal_prompt": "Persistence test prompt",
+        "max_budget_usd": 10.0,
+    }
+    create_resp = client.post("/api/v1/session", json=payload)
+    session_id = create_resp.json()["session_id"]
+
+    # 2. Export session checkpoint
+    export_resp = client.get(f"/api/v1/session/{session_id}/export")
+    assert export_resp.status_code == 200
+    checkpoint = export_resp.json()
+    assert checkpoint["session_id"] == session_id
+    assert "checkpoint_id" in checkpoint
+
+    # 3. Resume session
+    resume_payload = {"session_id": session_id, "checkpoint_id": checkpoint["checkpoint_id"]}
+    resume_resp = client.post(f"/api/v1/session/{session_id}/resume", json=resume_payload)
+    assert resume_resp.status_code == 200
+    resumed = resume_resp.json()
+    assert resumed["session_id"] == session_id
+    assert resumed["status"] == "running"
 
 
 def test_get_plan_endpoint():
