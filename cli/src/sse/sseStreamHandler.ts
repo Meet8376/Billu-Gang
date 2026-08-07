@@ -2,14 +2,23 @@ import { SSEEvent } from './sseTypes.js';
 import { SessionInfo, TaskGraphNode, VerificationItem } from '../api/apiTypes.js';
 import { IntakeStep } from '../components/views/IntakeView.js';
 
+import { StageStatus } from '../components/views/IntakeView.js';
+
 export interface SSEStreamState {
   session: SessionInfo;
   intakeSteps: IntakeStep[];
+  stages?: StageStatus[];
   intakeReady: boolean;
   taskTitle: string;
   taskNodes: TaskGraphNode[];
   verifications: VerificationItem[];
   logs: string[];
+  finalSummary?: {
+    score?: number;
+    testsPassing?: string;
+    executionTimeSec?: number;
+    reportPath?: string;
+  };
   recoveringReason?: string;
 }
 

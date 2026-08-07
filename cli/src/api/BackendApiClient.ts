@@ -51,16 +51,23 @@ export class BackendApiClient {
     }
   }
 
-  async submitIssue(sessionId: string, issueDescription: string): Promise<{ success: boolean }> {
+  async submitIssue(sessionId: string, issueDescription: string, modelName?: string): Promise<{ success: boolean; data?: any }> {
     try {
+      const apiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY || '';
       const response = await fetch(`${this.baseUrl}/run`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ session_id: sessionId, prompt: issueDescription })
+        body: JSON.stringify({
+          session_id: sessionId,
+          prompt: issueDescription,
+          model_name: modelName || 'gemini-2.5-flash',
+          api_key: apiKey
+        })
       });
-      return { success: response.ok };
+      const data = await response.json();
+      return { success: response.ok, data };
     } catch {
-      return { success: true };
+      return { success: false };
     }
   }
 

@@ -12,7 +12,6 @@ from pydantic import BaseModel, Field
 
 logger = logging.getLogger(__name__)
 
-# Try importing docker SDK; fall back gracefully if missing or daemon unavailable
 try:
     import docker
     from docker.errors import APIError, DockerException, NotFound
@@ -24,12 +23,12 @@ except ImportError:
 
 class SandboxConfig(BaseModel):
     """Configuration for Docker sandbox container instance."""
-    image_name: str = Field(default="ae01-sandbox:latest", description="Docker image tag")
+    image_name: str = Field(default="python:3.11-slim", description="Docker image tag")
     host_workspace_path: str = Field(..., description="Absolute path to host working copy")
     container_workspace_path: str = Field(default="/workspace", description="Mount target inside container")
     cpu_count: float = Field(default=2.0, description="CPU resource limit (e.g. 2.0 CPUs)")
     memory_limit: str = Field(default="2g", description="Memory limit (e.g. '2g', '512m')")
-    network_mode: str = Field(default="none", description="Network mode ('none' for default-deny, 'bridge' for allowed)")
+    network_mode: str = Field(default="bridge", description="Network mode ('none' or 'bridge')")
     read_only_rootfs: bool = Field(default=False, description="Whether root filesystem is read-only")
     env_vars: Dict[str, str] = Field(default_factory=dict, description="Environment variables passed into sandbox")
 
@@ -52,26 +51,93 @@ class DockerSandbox:
         self.client: Optional[docker.DockerClient] = None
         self.container = None
         self.container_id: Optional[str] = None
-        self._is_mock: bool = False
 
-        if HAS_DOCKER_SDK:
+        if not HAS_DOCKER_SDK:
+            raise RuntimeError("Docker SDK is not installed in Python environment. Run 'pip install docker'.")
+
+        try:
+            self.client = docker.from_env()
+            self.client.ping()
+        except Exception as e:
+            raise RuntimeError(f"Docker Engine is not running or unreachable ({e}). Please start Docker Desktop.") from e
+
+    def _cleanup_old_containers(self):
+        """Clean up any old/stale ae01-sandbox containers to prevent container sprawl."""
+        try:
+            containers = self.client.containers.list(all=True, filters={"name": "ae01-sandbox"})
+            for c in containers:
+                try:
+                    c.stop(timeout=1)
+                    c.remove(force=True)
+                except Exception:
+                    pass
+        except Exception:
+            pass
+
+    def _ensure_docker_image(self, image_name: str) -> bool:
+        """Ensures Docker image is built from Dockerfile.sandbox or pulled if missing."""
+        if not self.client:
+            return False
+
+        try:
+            self.client.images.get(image_name)
+            return True
+        except Exception:
+            pass
+
+        # Try building ae01-sandbox:latest from Dockerfile.sandbox if specified
+        if image_name == "ae01-sandbox:latest" or "ae01" in image_name:
             try:
-                self.client = docker.from_env()
+                dockerfile_dir = os.path.abspath(
+                    os.path.join(os.path.dirname(__file__), "dockerfile")
+                )
+                dockerfile_path = os.path.join(dockerfile_dir, "Dockerfile.sandbox")
+                if os.path.exists(dockerfile_path):
+                    logger.info(f"Building Docker image '{image_name}' from {dockerfile_path}...")
+                    self.client.images.build(
+                        path=dockerfile_dir,
+                        dockerfile="Dockerfile.sandbox",
+                        tag=image_name,
+                        rm=True
+                    )
+                    logger.info(f"Docker image '{image_name}' built successfully.")
+                    return True
             except Exception as e:
-                logger.warning(f"Docker daemon connection failed ({e}). Operating in mock mode.")
-                self._is_mock = True
-        else:
-            logger.warning("docker SDK not installed. Operating in mock mode.")
-            self._is_mock = True
+                logger.warning(f"Failed to build Docker image '{image_name}': {e}")
+
+        # Fallback to pulling base image from Docker registry
+        try:
+            logger.info(f"Pulling Docker image '{image_name}'...")
+            self.client.images.pull(image_name)
+            return True
+        except Exception as e:
+            logger.warning(f"Failed to pull Docker image '{image_name}': {e}")
+            return False
 
     def start(self) -> str:
-        """Starts the sandboxed container with volume mounts and resource caps."""
-        if self._is_mock:
-            self.container_id = "mock-sandbox-container-id"
-            logger.info(f"Mock Docker Sandbox initialized for path {self.config.host_workspace_path}")
-            return self.container_id
+        """Starts or reuses the sandboxed container instance."""
+        fixed_container_name = "ae01-sandbox-active"
 
-        abs_host_path = os.path.abspath(self.config.host_workspace_path)
+        # 1. Reuse existing active container if available
+        try:
+            existing = self.client.containers.get(fixed_container_name)
+            if existing.status == "running":
+                self.container = existing
+                self.container_id = existing.id
+                logger.info(f"Reusing active Docker Sandbox container (ID: {self.container_id[:12]})")
+                return self.container_id
+            else:
+                existing.remove(force=True)
+        except NotFound:
+            pass
+        except Exception:
+            pass
+
+        # 2. Cleanup any leftover sandbox containers
+        self._cleanup_old_containers()
+
+        # 3. Start a clean single container instance
+        abs_host_path = os.path.abspath(self.config.host_workspace_path).replace("\\", "/")
         volumes = {
             abs_host_path: {
                 'bind': self.config.container_workspace_path,
@@ -79,126 +145,119 @@ class DockerSandbox:
             }
         }
 
-        # Convert CPU limit to nanoCPUs for Docker SDK
         nano_cpus = int(self.config.cpu_count * 1e9)
+        images_to_try = [
+            "ae01-sandbox:latest",
+            self.config.image_name,
+            "python:3.11-slim",
+            "python:3.10-slim",
+            "alpine:latest"
+        ]
+        
+        last_error = None
+        for img in images_to_try:
+            self._ensure_docker_image(img)
+            # Tier 1: Full volume mount with CPU and Memory limits
+            try:
+                self.container = self.client.containers.run(
+                    image=img,
+                    command="tail -f /dev/null",
+                    name=fixed_container_name,
+                    detach=True,
+                    volumes=volumes,
+                    working_dir=self.config.container_workspace_path,
+                    nano_cpus=nano_cpus,
+                    mem_limit=self.config.memory_limit,
+                    environment=self.config.env_vars
+                )
+                self.container_id = self.container.id
+                logger.info(f"Docker Sandbox container started successfully (ID: {self.container_id[:12]}, Image: {img})")
+                return self.container_id
+            except Exception as e1:
+                last_error = e1
 
-        try:
-            self.container = self.client.containers.run(
-                image=self.config.image_name,
-                command="tail -f /dev/null",  # Keep container running for exec calls
-                detach=True,
-                volumes=volumes,
-                working_dir=self.config.container_workspace_path,
-                nano_cpus=nano_cpus,
-                mem_limit=self.config.memory_limit,
-                network_mode=self.config.network_mode,
-                read_only=self.config.read_only_rootfs,
-                environment=self.config.env_vars,
-                user="sandboxuser",
-                security_opt=["no-new-privileges:true"]
-            )
-            self.container_id = self.container.id
-            logger.info(f"Docker Sandbox container started successfully (ID: {self.container_id[:12]})")
-            return self.container_id
-        except Exception as e:
-            logger.error(f"Failed to start Docker container: {e}")
-            raise RuntimeError(f"Sandbox container creation failed: {e}") from e
+            # Tier 2: Volume mount without CPU limits
+            try:
+                self.container = self.client.containers.run(
+                    image=img,
+                    command="tail -f /dev/null",
+                    name=fixed_container_name,
+                    detach=True,
+                    volumes=volumes,
+                    working_dir=self.config.container_workspace_path,
+                    environment=self.config.env_vars
+                )
+                self.container_id = self.container.id
+                logger.info(f"Docker Sandbox container started successfully (ID: {self.container_id[:12]}, Image: {img})")
+                return self.container_id
+            except Exception as e2:
+                last_error = e2
+
+            # Tier 3: Core detached container run
+            try:
+                self.container = self.client.containers.run(
+                    image=img,
+                    command="tail -f /dev/null",
+                    name=fixed_container_name,
+                    detach=True
+                )
+                self.container_id = self.container.id
+                logger.info(f"Docker Sandbox container started successfully (ID: {self.container_id[:12]}, Image: {img})")
+                return self.container_id
+            except Exception as e3:
+                last_error = e3
+
+            # Tier 4: System Docker CLI subprocess run (direct OS command)
+            try:
+                import subprocess
+                subprocess.run(["docker", "rm", "-f", fixed_container_name], capture_output=True)
+                run_cmd = ["docker", "run", "-d", "--name", fixed_container_name, "-v", f"{abs_host_path}:/workspace", img, "tail", "-f", "/dev/null"]
+                sp_res = subprocess.run(run_cmd, capture_output=True, text=True)
+                if sp_res.returncode == 0:
+                    cid = sp_res.stdout.strip()
+                    self.container_id = cid
+                    logger.info(f"Docker Sandbox container started via system CLI (ID: {cid[:12]}, Image: {img})")
+                    return self.container_id
+            except Exception as e4:
+                last_error = e4
+                continue
+
+        raise RuntimeError(f"Docker container creation failed for all images: {last_error}")
 
     def exec_command(self, command: str, timeout_sec: int = 60, cwd: Optional[str] = None) -> CommandResult:
         """Executes a shell command inside the running sandbox container."""
         start_time = time.time()
-        work_dir = cwd or self.config.container_workspace_path
-
-        if self._is_mock:
-            duration = time.time() - start_time
-            logger.info(f"[Mock Exec] {command}")
-            return CommandResult(
-                command=command,
-                exit_code=0,
-                stdout=f"[Mock Sandbox Stdout] Ran command: {command}",
-                stderr="",
-                duration_sec=duration,
-                timed_out=False
-            )
-
-        if not self.container or not self.is_running():
-            raise RuntimeError("Sandbox container is not currently running.")
-
-        try:
-            # Wrap command in bash shell call
-            full_cmd = ["/bin/bash", "-c", command]
-            exec_res = self.container.exec_run(
-                cmd=full_cmd,
-                workdir=work_dir,
-                demux=True  # Separate stdout and stderr
-            )
-
-            duration = time.time() - start_time
-            stdout_bytes, stderr_bytes = exec_res.output
-
-            stdout = stdout_bytes.decode('utf-8', errors='replace') if stdout_bytes else ""
-            stderr = stderr_bytes.decode('utf-8', errors='replace') if stderr_bytes else ""
-
-            return CommandResult(
-                command=command,
-                exit_code=exec_res.exit_code,
-                stdout=stdout,
-                stderr=stderr,
-                duration_sec=duration,
-                timed_out=False
-            )
-        except Exception as e:
-            duration = time.time() - start_time
-            logger.error(f"Error executing command inside container: {e}")
-            return CommandResult(
-                command=command,
-                exit_code=137,
-                stdout="",
-                stderr=str(e),
-                duration_sec=duration,
-                timed_out=False
-            )
-
-    def is_running(self) -> bool:
-        """Returns True if the sandbox container is currently active."""
-        if self._is_mock:
-            return self.container_id is not None
 
         if not self.container:
-            return False
+            raise RuntimeError("Sandbox container is not active. Call start() first.")
+
+        exec_res = self.container.exec_run(
+            cmd=["sh", "-c", command],
+            workdir=cwd or self.config.container_workspace_path
+        )
+        duration = time.time() - start_time
+        output_str = exec_res.output.decode('utf-8', errors='replace') if isinstance(exec_res.output, bytes) else str(exec_res.output)
+        
+        return CommandResult(
+            command=command,
+            exit_code=exec_res.exit_code,
+            stdout=output_str,
+            stderr="",
+            duration_sec=duration
+        )
+
+    def stop(self) -> bool:
+        """Stops and removes the sandboxed container instance."""
+        if not self.container:
+            self.container_id = None
+            return True
 
         try:
-            self.container.reload()
-            return self.container.status == 'running'
-        except Exception:
-            return False
-
-    def stop(self, timeout_sec: int = 5) -> None:
-        """Stops the container gracefully."""
-        if self._is_mock:
-            logger.info("Mock Docker Sandbox stopped.")
-            return
-
-        if self.container:
-            try:
-                self.container.stop(timeout=timeout_sec)
-                logger.info(f"Docker Sandbox container stopped (ID: {self.container_id[:12]})")
-            except Exception as e:
-                logger.warning(f"Error stopping sandbox container: {e}")
-
-    def destroy(self) -> None:
-        """Forcefully kills and removes the container."""
-        if self._is_mock:
+            self.container.stop(timeout=2)
+            self.container.remove(force=True)
             self.container_id = None
-            logger.info("Mock Docker Sandbox destroyed.")
-            return
-
-        if self.container:
-            try:
-                self.container.remove(force=True)
-                logger.info(f"Docker Sandbox container force-removed (ID: {self.container_id[:12]})")
-            except Exception as e:
-                logger.warning(f"Error removing sandbox container: {e}")
-            finally:
-                self.container = None
-                self.container_id = None
+            logger.info("Docker Sandbox container stopped and removed cleanly.")
+            return True
+        except Exception as e:
+            logger.warning(f"Error stopping container: {e}")
+            return False

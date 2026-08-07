@@ -12,11 +12,10 @@ import { TraceView } from './views/TraceView.js';
 import { ReviewerSummaryView } from './views/ReviewerSummaryView.js';
 import { MemoryInspectView } from './views/MemoryInspectView.js';
 import { BenchmarkView } from './views/BenchmarkView.js';
-export const Layout = ({ session, onCommandSubmit, intakeSteps, intakeReady, taskTitle, taskNodes, activeViewOverride, diffFileFilter, pendingApproval, onApprovalResponse }) => {
+
+export const Layout = ({ session, onCommandSubmit, intakeSteps, intakeReady, taskTitle, taskNodes, memoryItems, activeViewOverride, diffFileFilter, pendingApproval, onApprovalResponse }) => {
     const [activeView, setActiveView] = useState('intake');
-    // Allow external slash-command handler to override view state
     const currentView = activeViewOverride || activeView;
-    // Keyboard navigation across view tabs using Tab key
     useInput((input, key) => {
         if (key.tab) {
             const views = ['intake', 'graph', 'diff', 'trace', 'summary', 'memory', 'benchmark'];
@@ -24,7 +23,7 @@ export const Layout = ({ session, onCommandSubmit, intakeSteps, intakeReady, tas
             const nextIndex = (currentIndex + 1) % views.length;
             setActiveView(views[nextIndex]);
         }
-    }, { isActive: Boolean(process.stdin && process.stdin.isTTY) });
+    }, { isActive: true });
     const handleCommand = (cmd) => {
         const trimmed = cmd.toLowerCase().trim();
         if (trimmed.startsWith('/plan') || trimmed.startsWith('/graph')) {
@@ -63,7 +62,7 @@ export const Layout = ({ session, onCommandSubmit, intakeSteps, intakeReady, tas
             case 'summary':
                 return _jsx(ReviewerSummaryView, {});
             case 'memory':
-                return _jsx(MemoryInspectView, {});
+                return _jsx(MemoryInspectView, { memoryItems: memoryItems });
             case 'benchmark':
                 return _jsx(BenchmarkView, {});
             default:

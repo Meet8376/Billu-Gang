@@ -7,86 +7,80 @@ export function startMockSSEStream(sseClient: SSEClient, onEvent: (evt: SSEEvent
 
   const mockSequence: { delay: number; event: any }[] = [
     {
-      delay: 500,
+      delay: 400,
       event: {
         type: 'intake_progress',
         step: 'Scanning repository workspace',
         completed: true,
-        detail: '1,204 files indexed'
+        detail: '5 workspace source files loaded'
+      }
+    },
+    {
+      delay: 800,
+      event: {
+        type: 'intake_progress',
+        step: 'Building AST symbol graph',
+        completed: true,
+        detail: 'Symbols and functions indexed'
       }
     },
     {
       delay: 1200,
       event: {
         type: 'intake_progress',
-        step: 'Building AST symbol graph',
-        completed: true,
-        detail: '8,431 symbols parsed'
-      }
-    },
-    {
-      delay: 2000,
-      event: {
-        type: 'intake_progress',
         step: 'Mapping test-to-source relationships',
         completed: true,
-        detail: '312 test files mapped'
+        detail: 'Pytest test harness active'
       }
     },
     {
-      delay: 2800,
-      event: {
-        type: 'status_update',
-        tokensUsed: 14200,
-        costSoFar: 0.04,
-        testsPassing: '312/312',
-        sandboxState: 'sandboxed',
-        elapsedSeconds: 15
-      }
-    },
-    {
-      delay: 3500,
+      delay: 1600,
       event: {
         type: 'plan_updated',
-        taskTitle: 'Fix off-by-one error in pagination',
+        taskTitle: 'Autonomous Sandbox Review & Verification',
         nodes: [
-          { id: '1', label: 'Reproduce issue', status: 'done' },
-          { id: '2', label: 'Locate relevant source', status: 'done' },
-          { id: '3', label: 'Draft patch', status: 'running', detail: 'Modifying paginator.py' },
-          { id: '3a', label: 'Modify paginator.py', status: 'running', parentId: '3' },
-          { id: '3b', label: 'Update tests', status: 'pending', parentId: '3' },
-          { id: '4', label: 'Run verification suite', status: 'pending' },
-          { id: '5', label: 'Reviewer summary', status: 'pending' }
+          { id: '1', label: 'Scan repository workspace', status: 'done', detail: 'Source files loaded' },
+          { id: '2', label: 'Parse AST symbol graph', status: 'done', detail: 'Symbols indexed' },
+          { id: '3', label: 'Execute verification test suite', status: 'done', detail: '5/5 pytest passed' },
+          { id: '4', label: 'Gemini AI code review', status: 'running', detail: 'Analyzing collected artifacts...' },
+          { id: '5', label: 'Generate structured report', status: 'pending', detail: 'Docs/codebase_review.md' }
         ]
       }
     },
     {
-      delay: 5000,
-      event: {
-        type: 'verification_event',
-        suiteName: 'build',
-        status: 'passed',
-        durationSeconds: 3.2
-      }
-    },
-    {
-      delay: 6000,
-      event: {
-        type: 'verification_event',
-        suiteName: 'lint',
-        status: 'passed',
-        durationSeconds: 0.8
-      }
-    },
-    {
-      delay: 7000,
+      delay: 2400,
       event: {
         type: 'status_update',
-        tokensUsed: 42110,
-        costSoFar: 0.14,
-        testsPassing: '330/330',
+        tokensUsed: 0,
+        costSoFar: 0.0,
+        testsPassing: '5/5 passed',
         sandboxState: 'sandboxed',
-        elapsedSeconds: 47
+        elapsedSeconds: 3
+      }
+    },
+    {
+      delay: 3200,
+      event: {
+        type: 'plan_updated',
+        taskTitle: 'Autonomous Sandbox Review & Verification',
+        nodes: [
+          { id: '1', label: 'Scan repository workspace', status: 'done', detail: 'Source files loaded' },
+          { id: '2', label: 'Parse AST symbol graph', status: 'done', detail: 'Symbols indexed' },
+          { id: '3', label: 'Execute verification test suite', status: 'done', detail: '5/5 pytest passed' },
+          { id: '4', label: 'Gemini AI code review', status: 'done', detail: 'Score: 98/100 (Clean verification)' },
+          { id: '5', label: 'Generate structured report', status: 'done', detail: 'Report saved to codebase_review.md' }
+        ]
+      }
+    },
+    {
+      delay: 4000,
+      event: {
+        type: 'status_update',
+        tokensUsed: 0,
+        costSoFar: 0.0,
+        testsPassing: '5/5 passed',
+        sandboxState: 'completed',
+        elapsedSeconds: 4.2
       }
     }
   ];

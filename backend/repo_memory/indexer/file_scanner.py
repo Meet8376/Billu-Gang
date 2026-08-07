@@ -136,9 +136,12 @@ class FileScanner:
         Returns:
             List of Path objects for files to index
         """
+        if not self.repo_path.exists():
+            return []
+
         if include_extensions is None:
             include_extensions = self.CODE_EXTENSIONS
-        
+
         files = []
         
         def _scan_dir(directory: Path, depth: int = 0):

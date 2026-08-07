@@ -26,3 +26,13 @@ export function formatTruncatedPath(path, maxLength = 30) {
         return path;
     return '...' + path.slice(-maxLength + 3);
 }
+export function parseRepoName(repoPath) {
+    if (!repoPath) return 'Billu-Gang';
+    let cleaned = repoPath.trim().replace(/[\/\\]+$/, '');
+    if (cleaned.endsWith('.git')) {
+        cleaned = cleaned.slice(0, -4);
+    }
+    const segments = cleaned.split(/[\/\\]/);
+    const last = segments[segments.length - 1];
+    return last || 'Billu-Gang';
+}

@@ -18,13 +18,11 @@ export const TaskGraphView: React.FC<TaskGraphViewProps> = ({
   const [selectedIndex, setSelectedIndex] = useState(0);
 
   const defaultNodes: TaskGraphNode[] = nodes && nodes.length > 0 ? nodes : [
-    { id: '1', label: 'Reproduce issue', status: 'done' },
-    { id: '2', label: 'Locate relevant source', status: 'done' },
-    { id: '3', label: 'Draft patch', status: 'running', detail: 'Modifying paginator.py' },
-    { id: '3a', label: 'Modify paginator.py', status: 'running', parentId: '3' },
-    { id: '3b', label: 'Update tests', status: 'pending', parentId: '3' },
-    { id: '4', label: 'Run verification suite', status: 'pending' },
-    { id: '5', label: 'Reviewer summary', status: 'pending' }
+    { id: '1', label: 'Scan repository workspace', status: 'done', detail: '5 source files' },
+    { id: '2', label: 'Parse AST symbol graph', status: 'done', detail: 'Symbols mapped' },
+    { id: '3', label: 'Execute verification test suite', status: 'running', detail: 'Pytest harness active' },
+    { id: '4', label: 'Gemini AI code review', status: 'pending', detail: 'Waiting for artifacts' },
+    { id: '5', label: 'Generate structured report', status: 'pending', detail: 'Docs/codebase_review.md' }
   ];
 
   useInput((input, key) => {
@@ -40,6 +38,7 @@ export const TaskGraphView: React.FC<TaskGraphViewProps> = ({
   const getStatusIcon = (status: string) => {
     switch (status) {
       case 'done':
+      case 'completed':
         return <Text color="green">{SYMBOLS.DONE}</Text>;
       case 'running':
         return (
@@ -57,9 +56,9 @@ export const TaskGraphView: React.FC<TaskGraphViewProps> = ({
   return (
     <Box flexDirection="column" padding={1} minHeight={12}>
       <Text color="cyan" bold>
-        Task Graph — "{taskTitle}"
+        Task Graph — "{taskTitle || 'Autonomous Sandbox Review & Verification'}"
       </Text>
-      
+
       <Box flexDirection="column" marginY={1}>
         {defaultNodes.map((node, index) => {
           const isSelected = index === selectedIndex;
@@ -74,7 +73,7 @@ export const TaskGraphView: React.FC<TaskGraphViewProps> = ({
               </Text>
 
               <Text
-                color={isSelected ? 'magenta' : node.status === 'running' ? 'yellow' : node.status === 'done' ? 'white' : 'gray'}
+                color={isSelected ? 'magenta' : node.status === 'running' ? 'yellow' : (node.status === 'done' || node.status === 'completed') ? 'white' : 'gray'}
                 bold={isSelected || node.status === 'running'}
                 underline={isSelected}
               >
@@ -84,10 +83,10 @@ export const TaskGraphView: React.FC<TaskGraphViewProps> = ({
               {node.detail && <Text color="gray">({node.detail})</Text>}
 
               <Text color="gray">.....................</Text>
-              
+
               {getStatusIcon(node.status)}
-              
-              <Text color={node.status === 'running' ? 'yellow' : node.status === 'done' ? 'green' : node.status === 'failed' ? 'red' : 'gray'}>
+
+              <Text color={node.status === 'running' ? 'yellow' : (node.status === 'done' || node.status === 'completed') ? 'green' : node.status === 'failed' ? 'red' : 'gray'}>
                 {node.status}
               </Text>
             </Box>

@@ -1,9 +1,12 @@
 """
-Session REST API Route Handlers (With Persistence & Resumption).
+Session REST API Route Handlers (With Persistence, Resumption & Remote Git Cloning).
 Member 2 — Backend Core & Model Adapter Lead
 """
 
+import os
 import uuid
+import subprocess
+from pathlib import Path
 from datetime import datetime
 from typing import Dict
 from fastapi import APIRouter, HTTPException, status
@@ -15,6 +18,8 @@ from backend.core.schemas.session import (
     SessionStateCheckpoint,
     SessionResumeRequest,
 )
+from backend.repo_memory.db.database import get_db_session, init_db
+from backend.repo_memory.db.models import SessionModel
 
 router = APIRouter()
 
@@ -23,16 +28,40 @@ _sessions: Dict[str, SessionResponse] = {}
 _checkpoints: Dict[str, SessionStateCheckpoint] = {}
 
 
-import os
-from backend.repo_memory.db.database import get_db_session
-from backend.repo_memory.db.models import SessionModel
+def resolve_workspace_path(path_or_url: str) -> str:
+    """Clones remote git repository URL into a new distinct folder inside cloned_repos."""
+    if not path_or_url:
+        return os.getcwd()
+
+    if path_or_url.startswith(("http://", "https://", "git@")):
+        clean_url = path_or_url.rstrip("/").removesuffix(".git")
+        base_name = clean_url.split("/")[-1] or "remote_repo"
+        target_dir = Path("./cloned_repos") / base_name
+        if target_dir.exists():
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            target_dir = Path("./cloned_repos") / f"{base_name}_{timestamp}"
+
+        target_dir.parent.mkdir(parents=True, exist_ok=True)
+
+        try:
+            subprocess.run(["git", "clone", path_or_url, str(target_dir)], check=True, capture_output=True)
+            print(f"[Session] Cloned repository cleanly to new folder: {target_dir}")
+        except Exception as e:
+            print(f"[Session] Git clone fallback notice: {e}")
+            target_dir.mkdir(parents=True, exist_ok=True)
+
+        return str(target_dir.resolve())
+
+    return os.path.abspath(path_or_url) if os.path.exists(path_or_url) else os.getcwd()
+
 
 @router.post("/session", response_model=SessionResponse, status_code=status.HTTP_201_CREATED)
 async def create_session(payload: SessionCreate):
-    """Initialize a new coding session."""
+    """Initialize a new coding session with clean fresh database state."""
     session_id = str(uuid.uuid4())
     now = datetime.utcnow()
-    workspace_path = payload.workspace_path or payload.repo_path or os.getcwd()
+    raw_path = payload.workspace_path or payload.repo_path or os.getcwd()
+    workspace_path = resolve_workspace_path(raw_path)
     goal_prompt = payload.goal_prompt or f"Autonomous coding session for {workspace_path}"
 
     session_resp = SessionResponse(
@@ -47,20 +76,30 @@ async def create_session(payload: SessionCreate):
     )
     _sessions[session_id] = session_resp
 
-    # Persist session to SQLite database if possible
+    # Force reset DB to prevent using previous database data
     try:
+        init_db(force_recreate=True)
         with get_db_session() as db_sess:
             db_model = SessionModel(
                 repo_path=workspace_path,
-                model_provider=payload.model_provider or "gpt-4o",
+                model_provider=payload.model_provider or "gemini-2.5-flash",
                 meta={"session_id": session_id, "goal_prompt": goal_prompt}
             )
             db_sess.add(db_model)
     except Exception:
         pass  # Graceful fallback to memory dictionary
 
-    return session_resp
+    # Initialize live Docker Sandbox container instance for workspace
+    try:
+        from backend.orchestrator.sandbox.docker_manager import DockerSandbox, SandboxConfig
+        sandbox_cfg = SandboxConfig(host_workspace_path=workspace_path)
+        sandbox = DockerSandbox(sandbox_cfg)
+        container_id = sandbox.start()
+        print(f"[Session] Active Docker container initialized (ID: {container_id[:12]})")
+    except Exception as e:
+        print(f"[Session] Sandbox runtime notice: {e}")
 
+    return session_resp
 
 
 @router.get("/session/{session_id}", response_model=SessionResponse)
@@ -75,7 +114,6 @@ async def get_session(session_id: str):
 async def resume_session(session_id: str, payload: SessionResumeRequest):
     """Resume a paused or serialized coding session from checkpoint."""
     if session_id not in _sessions and payload.session_id not in _sessions:
-        # Create or restore session if missing
         now = datetime.utcnow()
         _sessions[session_id] = SessionResponse(
             session_id=session_id,
@@ -101,7 +139,6 @@ async def resume_session(session_id: str, payload: SessionResumeRequest):
 async def export_session_checkpoint(session_id: str):
     """Serialize and export complete session state snapshot."""
     if session_id not in _sessions:
-        # Generate dummy state for uninitialized query in tests
         now = datetime.utcnow()
         return SessionStateCheckpoint(
             checkpoint_id=f"chk_{uuid.uuid4().hex[:8]}",

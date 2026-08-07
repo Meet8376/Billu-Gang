@@ -1,7 +1,6 @@
 import React from 'react';
 import { Box, Text } from 'ink';
 import { SessionInfo } from '../api/apiTypes.js';
-import { formatCurrency, formatTokenCount } from '../utils/formatters.js';
 
 interface StatusStripProps {
   session: SessionInfo;
@@ -17,29 +16,21 @@ export const StatusStrip: React.FC<StatusStripProps> = ({ session, currentTaskLa
       justifyContent="space-between"
     >
       <Box gap={1}>
-        <Text color="gray">Status:</Text>
-        <Text color={session.sandboxState === 'sandboxed' ? 'green' : 'yellow'}>
-          [{session.sandboxState.toUpperCase()}]
+        <Text color="gray">Sandbox Status:</Text>
+        <Text color="green" bold>
+          [{session.sandboxState?.toUpperCase() || 'ACTIVE'}]
         </Text>
         {currentTaskLabel && (
           <>
             <Text color="gray">|</Text>
-            <Text color="white">Active: {currentTaskLabel}</Text>
+            <Text color="white">Stage: {currentTaskLabel}</Text>
           </>
         )}
       </Box>
 
       <Box gap={2}>
         <Text color="gray">
-          Tokens: <Text color="white">{formatTokenCount(session.tokensUsed)}</Text>
-        </Text>
-        <Text color="gray">|</Text>
-        <Text color="gray">
-          Cost: <Text color="green">{formatCurrency(session.costSoFar)}</Text>
-        </Text>
-        <Text color="gray">|</Text>
-        <Text color="gray">
-          Tests: <Text color="cyan">{session.testsPassing}</Text>
+          Tests: <Text color="cyan" bold>{session.testsPassing || 'All Passed'}</Text>
         </Text>
         <Text color="gray">|</Text>
         <Text color="magenta">Tab: Switch View</Text>

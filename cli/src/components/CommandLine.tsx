@@ -22,7 +22,7 @@ export const CommandLine: React.FC<CommandLineProps> = ({ onSubmit, disabled = f
     } else if (char && !key.ctrl && !key.meta) {
       setInput((prev) => prev + char);
     }
-  }, { isActive: Boolean(process.stdin && process.stdin.isTTY) });
+  }, { isActive: true });
 
   return (
     <Box paddingX={1} borderStyle="single" borderColor="magenta">

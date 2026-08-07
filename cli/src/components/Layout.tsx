@@ -4,7 +4,7 @@ import { HeaderBar } from './HeaderBar.js';
 import { StatusStrip } from './StatusStrip.js';
 import { CommandLine } from './CommandLine.js';
 import { ApprovalPrompt } from './ApprovalPrompt.js';
-import { IntakeView, IntakeStep } from './views/IntakeView.js';
+import { IntakeView, IntakeStep, StageStatus } from './views/IntakeView.js';
 import { TaskGraphView } from './views/TaskGraphView.js';
 import { DiffView } from './views/DiffView.js';
 import { TraceView } from './views/TraceView.js';
@@ -23,6 +23,14 @@ interface LayoutProps {
   taskTitle: string;
   taskNodes: TaskGraphNode[];
   memoryItems?: MemoryItem[];
+  stages?: StageStatus[];
+  liveLogs?: string[];
+  finalSummary?: {
+    score?: number;
+    testsPassing?: string;
+    executionTimeSec?: number;
+    reportPath?: string;
+  };
   activeViewOverride?: ActiveView;
   diffFileFilter?: string;
   pendingApproval?: { command: string; reason: string };
@@ -37,6 +45,9 @@ export const Layout: React.FC<LayoutProps> = ({
   taskTitle,
   taskNodes,
   memoryItems,
+  stages,
+  liveLogs,
+  finalSummary,
   activeViewOverride,
   diffFileFilter,
   pendingApproval,
@@ -44,10 +55,8 @@ export const Layout: React.FC<LayoutProps> = ({
 }) => {
   const [activeView, setActiveView] = useState<ActiveView>('intake');
 
-  // Allow external slash-command handler to override view state
   const currentView = activeViewOverride || activeView;
 
-  // Keyboard navigation across view tabs using Tab key
   useInput((input, key) => {
     if (key.tab) {
       const views: ActiveView[] = ['intake', 'graph', 'diff', 'trace', 'summary', 'memory', 'benchmark'];
@@ -55,7 +64,7 @@ export const Layout: React.FC<LayoutProps> = ({
       const nextIndex = (currentIndex + 1) % views.length;
       setActiveView(views[nextIndex]);
     }
-  }, { isActive: Boolean(process.stdin && process.stdin.isTTY) });
+  }, { isActive: true });
 
   const handleCommand = (cmd: string) => {
     const trimmed = cmd.toLowerCase().trim();
@@ -80,7 +89,7 @@ export const Layout: React.FC<LayoutProps> = ({
   const renderMainPane = () => {
     switch (currentView) {
       case 'intake':
-        return <IntakeView steps={intakeSteps} ready={intakeReady} />;
+        return <IntakeView steps={intakeSteps} ready={intakeReady} stages={stages} liveLogs={liveLogs} finalSummary={finalSummary} />;
       case 'graph':
         return <TaskGraphView taskTitle={taskTitle} nodes={taskNodes} />;
       case 'diff':
@@ -94,7 +103,7 @@ export const Layout: React.FC<LayoutProps> = ({
       case 'benchmark':
         return <BenchmarkView />;
       default:
-        return <IntakeView steps={intakeSteps} ready={intakeReady} />;
+        return <IntakeView steps={intakeSteps} ready={intakeReady} stages={stages} liveLogs={liveLogs} finalSummary={finalSummary} />;
     }
   };
 

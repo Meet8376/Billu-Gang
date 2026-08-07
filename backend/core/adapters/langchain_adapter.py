@@ -31,6 +31,18 @@ class LangChainAdapter(ModelAdapter):
         """Execute completion using LangChain messages and model invocation."""
         lc_messages = self._convert_to_langchain_messages(messages, system_prompt)
 
+        if not self.chat_model and (self.api_key or os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY")):
+            try:
+                from langchain_google_genai import ChatGoogleGenerativeAI
+                key = self.api_key or os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY")
+                self.chat_model = ChatGoogleGenerativeAI(
+                    model=self.model_name,
+                    google_api_key=key,
+                    temperature=temperature,
+                )
+            except Exception as e:
+                pass
+
         if self.chat_model:
             model_to_use = self.chat_model
             if tools:
@@ -66,7 +78,7 @@ class LangChainAdapter(ModelAdapter):
                 raw_message=ai_msg,
             )
 
-        # Fallback structured mock execution if no live chat_model instance is injected
+        # Fallback structured mock execution if no live chat_model instance and no API key available
         mock_content = f"[LangChain Execution Complete for '{self.model_name}']"
         mock_tool_calls = []
         if tools:
