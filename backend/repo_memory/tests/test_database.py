@@ -5,7 +5,7 @@ Unit tests for database layer
 import tempfile
 from pathlib import Path
 import pytest
-from datetime import datetime
+from datetime import datetime, timezone
 
 from backend.repo_memory.db import (
     init_db,
@@ -185,7 +185,7 @@ def test_memory_invalidation(temp_db):
         
         # Invalidate it
         memory.is_valid = 0
-        memory.invalidated_at = datetime.utcnow()
+        memory.invalidated_at = datetime.now(timezone.utc)
         session.commit()
         
         # Verify
