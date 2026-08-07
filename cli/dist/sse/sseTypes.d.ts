@@ -98,14 +98,14 @@ export declare const VerificationEventSchema: z.ZodObject<{
     errorReason: z.ZodOptional<z.ZodString>;
 }, "strip", z.ZodTypeAny, {
     type: "verification_event";
-    status: "running" | "pending" | "failed" | "passed";
     suiteName: string;
+    status: "running" | "pending" | "failed" | "passed";
     durationSeconds?: number | undefined;
     errorReason?: string | undefined;
 }, {
     type: "verification_event";
-    status: "running" | "pending" | "failed" | "passed";
     suiteName: string;
+    status: "running" | "pending" | "failed" | "passed";
     durationSeconds?: number | undefined;
     errorReason?: string | undefined;
 }>;
@@ -226,14 +226,14 @@ export declare const SSEEventSchema: z.ZodDiscriminatedUnion<"type", [z.ZodObjec
     errorReason: z.ZodOptional<z.ZodString>;
 }, "strip", z.ZodTypeAny, {
     type: "verification_event";
-    status: "running" | "pending" | "failed" | "passed";
     suiteName: string;
+    status: "running" | "pending" | "failed" | "passed";
     durationSeconds?: number | undefined;
     errorReason?: string | undefined;
 }, {
     type: "verification_event";
-    status: "running" | "pending" | "failed" | "passed";
     suiteName: string;
+    status: "running" | "pending" | "failed" | "passed";
     durationSeconds?: number | undefined;
     errorReason?: string | undefined;
 }>, z.ZodObject<{

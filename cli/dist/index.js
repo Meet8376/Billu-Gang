@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import { Command } from 'commander';
 import { runRepl } from './cli.js';
+import { runDemoMode } from './utils/demoRunner.js';
 const program = new Command();
 program
     .name('ae-harness')
@@ -27,6 +28,12 @@ program
     .description('Open Reviewer Summary view for completed task')
     .action(() => {
     runRepl('.', 'claude-3-5-sonnet');
+});
+program
+    .command('demo')
+    .description('Run automated presentation dry run of Minimum Viable Demonstration (MVD FR37-FR42)')
+    .action(() => {
+    runDemoMode();
 });
 program.parse(process.argv);
 if (!process.argv.slice(2).length) {

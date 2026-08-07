@@ -2,13 +2,14 @@
 Context Module
 
 Token-budgeted prompt context assembly, relevance ranking,
-file summarization, and prompt/credential sanitization.
+file summarization, prompt/credential sanitization, and latency profiling.
 """
 
 from .context_manager import ContextManager
 from .relevance_ranker import RelevanceRanker, rank_context_items
 from .summarizer import FileSummarizer, summarize_file
 from .sanitizer import Sanitizer, sanitize_prompt_text
+from .latency_profiler import ContextLatencyProfiler
 
 __all__ = [
     "ContextManager",
@@ -18,4 +19,5 @@ __all__ = [
     "summarize_file",
     "Sanitizer",
     "sanitize_prompt_text",
+    "ContextLatencyProfiler",
 ]

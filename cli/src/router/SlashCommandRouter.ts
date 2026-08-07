@@ -3,7 +3,9 @@ export type SlashCommandType =
   | 'plan'
   | 'diff'
   | 'trace'
+  | 'summary'
   | 'memory'
+  | 'benchmark'
   | 'rollback'
   | 'approve'
   | 'pause'
@@ -49,9 +51,18 @@ export class SlashCommandRouter {
       case 'events':
         return { type: 'trace', rawInput: input, commandName, args, filterArg };
 
+      case 'summary':
+      case 'review':
+        return { type: 'summary', rawInput: input, commandName, args, filterArg };
+
       case 'memory':
       case 'context':
         return { type: 'memory', rawInput: input, commandName, args, filterArg };
+
+      case 'benchmark':
+      case 'eval':
+      case 'ablation':
+        return { type: 'benchmark', rawInput: input, commandName, args, filterArg };
 
       case 'rollback':
       case 'revert':
@@ -83,7 +94,9 @@ export class SlashCommandRouter {
       '/graph',
       '/diff',
       '/trace',
+      '/summary',
       '/memory',
+      '/benchmark',
       '/rollback',
       '/pause',
       '/help'
