@@ -1,5 +1,5 @@
 """
-Session Pydantic v2 Schemas & Serialization Checkpoints.
+Session Pydantic v2 Schemas, Serialization Checkpoints & Benchmark Reports.
 Member 2 — Backend Core & Model Adapter Lead
 """
 
@@ -58,6 +58,33 @@ class SessionResumeRequest(BaseModel):
     session_id: str
     checkpoint_id: Optional[str] = None
     updated_budget_usd: Optional[float] = None
+
+
+class ModelBenchmarkMetrics(BaseModel):
+    """Metrics recorded for an individual model adapter benchmark execution."""
+    model_name: str
+    tokens_input: int
+    tokens_output: int
+    total_tokens: int
+    wall_clock_latency_seconds: float
+    cost_usd: float
+    success: bool
+    harness_modified: bool = False
+
+
+class FinancialSummaryReport(BaseModel):
+    """Total session token usage, wall-clock latency, and financial USD summary report."""
+    session_id: str
+    generated_at: datetime = Field(default_factory=datetime.utcnow)
+    total_input_tokens: int
+    total_output_tokens: int
+    total_tokens: int
+    total_cost_usd: float
+    total_latency_seconds: float
+    max_budget_usd: float
+    budget_exceeded: bool
+    per_model_breakdown: Dict[str, Dict[str, Any]] = Field(default_factory=dict)
+    benchmark_models_verified: List[ModelBenchmarkMetrics] = Field(default_factory=list)
 
 
 class Session(BaseModel):

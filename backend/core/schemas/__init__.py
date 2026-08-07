@@ -10,6 +10,8 @@ from backend.core.schemas.session import (
     SessionStatus,
     SessionStateCheckpoint,
     SessionResumeRequest,
+    ModelBenchmarkMetrics,
+    FinancialSummaryReport,
 )
 from backend.core.schemas.task_graph import TaskGraphNode, NodeStatus, TaskType, TaskGraph
 from backend.core.schemas.tool_call import ToolCall, ToolCallResult, CommandScope, ApprovalRequest, ApprovalResponse
@@ -24,6 +26,8 @@ __all__ = [
     "SessionStatus",
     "SessionStateCheckpoint",
     "SessionResumeRequest",
+    "ModelBenchmarkMetrics",
+    "FinancialSummaryReport",
     "TaskGraphNode",
     "NodeStatus",
     "TaskType",
