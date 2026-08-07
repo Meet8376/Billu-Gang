@@ -51,7 +51,23 @@ class LangChainAdapter(ModelAdapter):
                 model_to_use = model_to_use.bind_tools(formatted_tools)
 
             ai_msg = await model_to_use.ainvoke(lc_messages)
-            content = str(ai_msg.content or "")
+            # ai_msg.content may be a str OR a list of content-part dicts
+            # e.g. [{'type': 'text', 'text': '...', 'extras': {...}}]
+            raw_content = ai_msg.content
+            if isinstance(raw_content, list):
+                # Extract all text parts and join them
+                text_parts = []
+                for part in raw_content:
+                    if isinstance(part, dict):
+                        text_parts.append(part.get("text", ""))
+                    elif isinstance(part, str):
+                        text_parts.append(part)
+                content = "\n".join(text_parts).strip()
+            elif isinstance(raw_content, str):
+                content = raw_content
+            else:
+                content = str(raw_content or "")
+
 
             raw_tool_calls = getattr(ai_msg, "tool_calls", [])
             extracted_tool_calls = [
@@ -114,7 +130,12 @@ class LangChainAdapter(ModelAdapter):
         lc_messages = self._convert_to_langchain_messages(messages, system_prompt)
         if self.chat_model:
             async for chunk in self.chat_model.astream(lc_messages):
-                yield str(chunk.content or "")
+                raw = chunk.content
+                if isinstance(raw, list):
+                    yield "\n".join(p.get("text", "") if isinstance(p, dict) else str(p) for p in raw)
+                else:
+                    yield str(raw or "")
+
         else:
             chunks = [f"[LangChain ", "Streaming ", f"Chunk for '{self.model_name}']"]
             for c in chunks:

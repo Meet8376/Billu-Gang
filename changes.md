@@ -33,6 +33,28 @@ This file records all modifications, fixes, and architectural work executed duri
   - Removed `[:400]` string truncation so full reviews are preserved.
   - Added automatic generation of `changes.md` in the target workspace after each completed session run.
 
+## 3. Comprehensive Multi-Language & Self-Correction Features
+
+### 🟢 Universal Multi-Language Support ([run_routes.py](file:///d:/Billu-Gang/Billu-Gang/backend/core/routes/run_routes.py#L72))
+Supported programming language file extensions include:
+- **C / C++**: `.c`, `.h`, `.cpp`, `.hpp`, `.cc`
+- **Java**: `.java`
+- **Python**: `.py`
+- **TypeScript / JavaScript**: `.ts`, `.tsx`, `.js`, `.jsx`
+- **Go**: `.go`
+- **Rust**: `.rs`
+- **C# / Kotlin / Swift / Ruby**: `.cs`, `.kt`, `.swift`, `.rb`
+- **Shell / SQL / Web**: `.sh`, `.sql`, `.html`, `.css`, `.json`, `.yaml`
+
+### 🔄 Recursive Self-Correction Repair Engine ([run_routes.py](file:///d:/Billu-Gang/Billu-Gang/backend/core/routes/run_routes.py#L140))
+- Automatically detects syntax, compilation, and test failures inside Docker.
+- Feeds exact error tracebacks to Gemini (`gemini-3.5-flash-lite`), applies generated code fixes to disk and Docker, and re-checks recursively (up to 4 attempts) until 100% clean!
+
+### 📝 Automated Session Audit Logging
+- Every session run updates **[changes.md](file:///d:/Billu-Gang/Billu-Gang/changes.md)** with a complete work log trace.
+  - Removed `[:400]` string truncation so full reviews are preserved.
+  - Added automatic generation of `changes.md` in the target workspace after each completed session run.
+
 ### 🟢 [backend/verification/pipeline/runner.py](file:///d:/Billu-Gang/Billu-Gang/backend/verification/pipeline/runner.py)
 - **Changes**: Enhanced regex fallback test output parsing for container stdout/stderr to ensure accurate test counts.
 

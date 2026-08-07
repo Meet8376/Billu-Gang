@@ -217,7 +217,7 @@ export const AppContainer: React.FC<AppProps> = ({
         logs: [...prev.logs, `[API Run #${nextRun}] Submitting prompt: "${input}"`]
       }));
 
-      const runRes = await apiClient.submitIssue(streamState.session.sessionId, input, initialModel);
+      const runRes = await apiClient.submitIssue(streamState.session.sessionId, input, initialModel, initialRepoPath);
 
       if (runRes.success && runRes.data) {
         const resData = runRes.data;

@@ -246,6 +246,16 @@ class DockerSandbox:
             duration_sec=duration
         )
 
+    def is_running(self) -> bool:
+        """Returns True if the underlying Docker container exists and is active."""
+        if not self.container:
+            return False
+        try:
+            self.container.reload()
+            return self.container.status == "running"
+        except Exception:
+            return True if self.container_id else False
+
     def stop(self) -> bool:
         """Stops and removes the sandboxed container instance."""
         if not self.container:

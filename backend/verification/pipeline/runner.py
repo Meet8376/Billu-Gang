@@ -109,12 +109,15 @@ class VerificationPipeline:
         )
         duration = (time.time() - start) * 1000.0
 
+        issue_details = "\n".join([f"- [{i.file}:L{i.line}] {i.message}" for i in analysis_res.issues if i.severity == "error"])
+        raw_msg = f"Linter found {analysis_res.errors} errors.\n{issue_details}" if issue_details else f"Linter found {analysis_res.errors} errors, {analysis_res.warnings} warnings."
+
         return StageResult(
             stage=VerificationStage.LINT,
             passed=analysis_res.passed,
             duration_ms=duration,
             details=analysis_res.model_dump(mode="json"),
-            raw_output=f"Ruff/Linter found {analysis_res.errors} errors, {analysis_res.warnings} warnings.",
+            raw_output=raw_msg,
         )
 
     def run_typecheck(self, workspace_path: str) -> StageResult:

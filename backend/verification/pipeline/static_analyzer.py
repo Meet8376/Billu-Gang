@@ -3,11 +3,14 @@ Static Analysis Integration Wrapper (Ruff, ESLint, Mypy).
 Member 5 — Verification, Benchmarking & Evaluation Lead
 """
 
+import os
+import ast
 import json
 import subprocess
 import shutil
 from typing import List, Optional, Dict, Any, Callable, Tuple
 from pydantic import BaseModel, Field
+
 
 
 class AnalysisIssue(BaseModel):
@@ -210,6 +213,34 @@ class StaticAnalyzer:
                 code, out, err = run_cmd(["eslint", "--format=json", target_dir], target_dir)
                 raw_outputs["eslint"] = out or err
                 all_issues.extend(self.parse_eslint_output(out or err))
+
+        # Native Python AST Syntax Check for target workspace files
+        import ast
+        for root, _, files in os.walk(target_dir):
+            rel_sub = os.path.relpath(root, target_dir)
+            sub_parts = rel_sub.split(os.sep)
+            if sub_parts[0] != "." and any(p in [".git", "node_modules", "venv", "__pycache__", "dist", ".ruff_cache", ".pytest_cache", ".mypy_cache"] for p in sub_parts):
+                continue
+            for f in files:
+                if f.endswith(".py"):
+                    fpath = os.path.join(root, f)
+                    try:
+                        with open(fpath, "r", encoding="utf-8", errors="ignore") as py_in:
+                            ast.parse(py_in.read(), filename=f)
+                    except SyntaxError as syn_err:
+                        err_msg = f"SyntaxError in {f} line {syn_err.lineno}: {syn_err.msg}"
+                        if syn_err.text:
+                            err_msg += f" (code: {syn_err.text.strip()})"
+                        raw_outputs["ast_parser"] = err_msg
+                        all_issues.append(
+                            AnalysisIssue(
+                                tool="ast_parser",
+                                file=f,
+                                message=err_msg,
+                                severity="error",
+                                line=syn_err.lineno
+                            )
+                        )
 
         errors = sum(1 for i in all_issues if i.severity == "error")
         warnings = sum(1 for i in all_issues if i.severity == "warning")

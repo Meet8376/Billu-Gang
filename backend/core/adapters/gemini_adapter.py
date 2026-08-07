@@ -14,20 +14,18 @@ logger = logging.getLogger(__name__)
 
 
 def map_gemini_model_name(model_name: str) -> str:
-    """Maps CLI model aliases to valid Google Gemini API endpoints."""
+    """Maps CLI model requests directly to native Google Gemini API model identities."""
     if not model_name:
-        return "gemini-2.5-flash"
-    m = model_name.lower().strip()
-    if "flash-lite" in m or "3.5-flash-lite" in m or "2.5-flash-lite" in m or "lite" in m:
         return "gemini-3.5-flash-lite"
-    if "1.5-pro" in m or "pro" in m:
+    m = model_name.lower().strip()
+    if "flash-lite" in m or "3.5-flash-lite" in m or "lite" in m:
+        return "gemini-3.5-flash-lite"
+    if "3.5-flash" in m or "flash" in m:
         return "gemini-3.5-flash"
-    if "1.5-flash" in m:
-        return "gemini-1.5-flash"
+    if "1.5-pro" in m or "pro" in m:
+        return "gemini-1.5-pro"
     if "2.0-flash" in m:
         return "gemini-2.0-flash"
-    if "2.5-flash" in m or "3.5" in m:
-        return "gemini-2.5-flash"
     return model_name
 
 

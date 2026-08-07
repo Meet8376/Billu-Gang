@@ -82,7 +82,7 @@ async def create_session(payload: SessionCreate):
         with get_db_session() as db_sess:
             db_model = SessionModel(
                 repo_path=workspace_path,
-                model_provider=payload.model_provider or "gemini-2.5-flash",
+                model_provider=payload.model_provider or "gemini-3.5-flash-lite",
                 meta={"session_id": session_id, "goal_prompt": goal_prompt}
             )
             db_sess.add(db_model)

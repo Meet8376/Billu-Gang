@@ -1,4 +1,5 @@
-"""
+# temp script - can be deleted
+
 Run Execution Control Route Handlers
 Autonomous AI Code Repair + Docker Verification Pipeline.
 Member 2 -- Backend Core & Model Adapter Lead
@@ -65,6 +66,7 @@ LANG_TO_EXT = {
     "dart": ".dart", "lua": ".lua", "perl": ".pl", "r": ".r",
 }
 
+# Pydantic models
 
 class RunControlRequest(BaseModel):
     session_id: str
@@ -84,15 +86,16 @@ class RunControlResponse(BaseModel):
     execution_time_sec: Optional[float] = 0.0
 
 
+# Helpers
+
 async def publish_stage_event(
     event_type: EventType,
     stage_name: str,
     completed: int,
     total: int = 7,
     log_line: Optional[str] = None,
-    payload: Optional[dict] = None
+    payload: Optional[dict] = None,
 ):
-    """Helper to broadcast real-time stage progress SSE events."""
     pct = round((completed / total) * 100.0, 1)
     evt = SSEEvent(
         event_id=str(uuid.uuid4()),
@@ -102,13 +105,12 @@ async def publish_stage_event(
         total_stages=total,
         progress_percentage=pct,
         log_line=log_line,
-        payload=payload or {}
+        payload=payload or {},
     )
     await broadcaster.publish(evt)
 
 
 def collect_workspace_files(workspace: str) -> List[Tuple[str, str]]:
-    """Walk workspace and return [(abs_path, rel_path)] for all source files. No file size cap."""
     results = []
     for root, dirs, files in os.walk(workspace):
         dirs[:] = [d for d in dirs if d not in SKIP_DIRS]
@@ -125,7 +127,6 @@ def collect_workspace_files(workspace: str) -> List[Tuple[str, str]]:
 
 
 def build_code_context(workspace: str) -> str:
-    """Full code context from all source files -- no truncation."""
     file_pairs = collect_workspace_files(workspace)
     if not file_pairs:
         return "No source files found in workspace."
@@ -141,7 +142,6 @@ def build_code_context(workspace: str) -> str:
 
 
 def detect_python_syntax_errors(workspace: str) -> List[str]:
-    """Run native AST parser on every .py file. Returns list of error strings."""
     errors = []
     for abs_path, rel_path in collect_workspace_files(workspace):
         if not abs_path.endswith(".py"):
@@ -161,7 +161,6 @@ def detect_python_syntax_errors(workspace: str) -> List[str]:
 
 
 def extract_verification_errors(verif_res: VerificationRun) -> str:
-    """Pull all error messages from verification stage results."""
     errors = []
     for stage in verif_res.stage_results:
         if not stage.passed and stage.raw_output and stage.raw_output.strip():
@@ -170,7 +169,6 @@ def extract_verification_errors(verif_res: VerificationRun) -> str:
 
 
 def write_file_safely(path: str, content: str) -> bool:
-    """Write content to path, creating parent dirs if needed."""
     try:
         parent = os.path.dirname(path)
         if parent:
@@ -185,72 +183,24 @@ def write_file_safely(path: str, content: str) -> bool:
         return False
 
 
-def _extract_prose_fallback(workspace: str, ai_response: str) -> List[str]:
-    """
-    Fallback: if Gemini returned prose with no code fences, try to extract
-    raw source code by detecting Python/Java/etc class or function patterns.
-    If the ENTIRE response (stripped) looks like source code, write it to the
-    single file in workspace (or the best matching file).
-    """
-    modified: List[str] = []
-    files = collect_workspace_files(workspace)
-    if not files:
-        return modified
-
-    stripped = ai_response.strip()
-
-    # Heuristic: looks like Python if it has class/def lines
-    py_indicators = ["class ", "def ", "import ", "from ", "    return", "    if", "    while"]
-    looks_like_code = sum(1 for ind in py_indicators if ind in stripped) >= 2
-
-    if not looks_like_code:
-        return modified
-
-    # Try to find the section that IS code (skip any leading prose paragraph)
-    lines = stripped.splitlines()
-    code_start = 0
-    for i, line in enumerate(lines):
-        if any(line.startswith(kw) for kw in ("class ", "def ", "import ", "from ", "#", "//")):
-            code_start = i
-            break
-    code_body = "\n".join(lines[code_start:]).strip()
-    if not code_body:
-        return modified
-
-    # Target: single .py file, or first .py file found
-    py_files = [p for p in files if p[0].endswith(".py")]
-    target = py_files[0][0] if py_files else files[0][0]
-
-    if write_file_safely(target, code_body):
-        name = os.path.basename(target)
-        modified.append(name)
-        logger.info(f"[CodeFix][Prose Fallback] Extracted code ({len(code_body)} chars) -> {target}")
-    return modified
-
-
 def apply_code_fixes(workspace: str, ai_response: str) -> List[str]:
     """
     Parse markdown code blocks from AI response and write to correct files.
     Strategy:
-      1) Fenced code block with explicit File: header comment
-      2) Fenced code block with filename mentioned in response
-      3) Single source file fallback
-      4) Language extension match
-      5) Prose fallback -- extract raw code from prose response
+      1. Explicit File: header comment inside code block
+      2. Filename mentioned anywhere in AI response
+      3. Single source file in workspace -> auto-target it
+      4. Match by language extension if only one file of that type exists
     """
     modified: List[str] = []
-
-    # Try multiple fence styles: triple backtick and triple tilde
     code_block_pattern = re.compile(
-        r"(?:```|~~~)(?P<lang>[a-zA-Z0-9_+\-]*)\s*\n(?P<body>.*?)(?:```|~~~)",
+        r"```(?P<lang>[a-zA-Z0-9_+\-]*)\s*\n(?P<body>.*?)```",
         re.DOTALL,
     )
     workspace_files = collect_workspace_files(workspace)
     workspace_file_names = {os.path.basename(p[0]): p[0] for p in workspace_files}
 
-    blocks_found = False
     for m in code_block_pattern.finditer(ai_response):
-        blocks_found = True
         lang_tag = m.group("lang").lower().strip()
         body = m.group("body")
 
@@ -259,6 +209,7 @@ def apply_code_fixes(workspace: str, ai_response: str) -> List[str]:
             body.strip(),
             re.IGNORECASE,
         )
+
         no_code_langs = {"", "text", "diff", "log", "output", "console", "powershell", "cmd"}
         if lang_tag in no_code_langs and not header_match:
             continue
@@ -268,7 +219,10 @@ def apply_code_fixes(workspace: str, ai_response: str) -> List[str]:
             declared_name = os.path.basename(header_match.group(1).strip().strip("`* "))
             body_lines = body.strip().splitlines()
             body = "\n".join(body_lines[1:])
-            target_path = workspace_file_names.get(declared_name) or os.path.join(workspace, declared_name)
+            if declared_name in workspace_file_names:
+                target_path = workspace_file_names[declared_name]
+            else:
+                target_path = os.path.join(workspace, declared_name)
 
         if not target_path:
             for fname, abs_path in workspace_file_names.items():
@@ -297,15 +251,12 @@ def apply_code_fixes(workspace: str, ai_response: str) -> List[str]:
             basename = os.path.basename(target_path)
             if basename not in modified:
                 modified.append(basename)
-            logger.info(f"[CodeFix] Wrote {len(clean_code)} bytes -> {target_path}")
-
-    # If no fenced blocks found, try prose fallback
-    if not blocks_found:
-        fallback = _extract_prose_fallback(workspace, ai_response)
-        modified.extend(f for f in fallback if f not in modified)
+            logger.info(f"[CodeFix] Wrote {len(clean_code)} bytes to {target_path}")
 
     return modified
 
+
+# Recursive repair engine
 
 async def recursive_repair_loop(
     workspace: str,
@@ -316,7 +267,6 @@ async def recursive_repair_loop(
     initial_verif: VerificationRun,
     max_attempts: int = 6,
 ) -> Tuple[List[str], VerificationRun, str]:
-    """Autonomous recursive repair: detect errors -> fix -> verify -> repeat until clean."""
     all_modified: List[str] = []
     latest_verif = initial_verif
     latest_ai_text = ""
@@ -344,48 +294,23 @@ async def recursive_repair_loop(
 
         system_prompt = (
             "You are an autonomous AI code repair engine with full write access to the repository.\n"
-            "You MUST output the corrected file(s) using EXACTLY this format:\n"
-            "\n"
-            "```python\n"
-            "# File: filename.py\n"
-            "<complete corrected file content here>\n"
-            "```\n"
-            "\n"
-            "CRITICAL RULES:\n"
-            "  - Start every code block with the language name (python, java, cpp, js, etc.)\n"
-            "  - The VERY FIRST LINE inside the block must be: # File: <filename> (Python) or // File: <filename> (Java/C/C++/Go/JS/TS)\n"
-            "  - Output the COMPLETE file -- every single line, no omissions, no '...' ellipsis\n"
-            "  - Fix ALL syntax errors: wrong comment syntax (// in Python), missing ->, wrong indentation\n"
-            "  - Fix ALL logic bugs: wrong algorithms, wrong return values, off-by-one errors\n"
-            "  - Do NOT output any prose, explanation, or markdown outside of code blocks\n"
-            "  - Do NOT output partial code or diffs\n"
+            "Rules:\n"
+            "  1. Output EVERY modified file as a fenced markdown code block.\n"
+            "  2. First line inside each code block MUST be a file header:\n"
+            "       Python/Shell/Ruby/SQL: # File: <filename>\n"
+            "       Java/C/C++/Go/Rust/JS/TS/C#/Kotlin/Swift: // File: <filename>\n"
+            "  3. Output COMPLETE file contents -- no partial snippets, no diffs.\n"
+            "  4. Fix ALL syntax errors, ALL logic bugs, ALL compilation errors.\n"
+            "  5. Output ONLY code blocks. No explanations, no prose.\n"
         )
-
-        # Build explicit example for the specific files to reinforce format
-        file_list = [rel for _, rel in collect_workspace_files(workspace)]
-        file_hint = ", ".join(file_list[:5]) if file_list else "<your files>"
 
         user_message = (
             f"=== REPAIR ATTEMPT {attempt}/{max_attempts} ===\n\n"
             f"{task_section}\n\n"
-            f"Files that need fixing: {file_hint}\n\n"
-            f"=== FULL REPOSITORY SOURCE CODE (read every file carefully) ===\n\n"
+            f"=== FULL REPOSITORY SOURCE CODE ===\n\n"
             f"{code_context}\n\n"
-            f"=== REQUIRED OUTPUT FORMAT ===\n"
-            f"Your ENTIRE response must consist ONLY of fenced code blocks.\n"
-            f"Example for a Python file named 'PowerOfThree.py':\n"
-            f"\n"
-            f"```python\n"
-            f"# File: PowerOfThree.py\n"
-            f"class Solution:\n"
-            f"    def isPowerOfThree(self, n: int) -> bool:\n"
-            f"        # complete correct implementation here\n"
-            f"        ...\n"
-            f"```\n"
-            f"\n"
-            f"Now output the corrected file(s):"
+            f"Output complete corrected replacement file(s) now:"
         )
-
 
         logger.info(f"[RepairLoop] Attempt {attempt}/{max_attempts}, prompt length: {len(user_message)} chars")
 
@@ -407,11 +332,7 @@ async def recursive_repair_loop(
                 all_modified.append(f)
 
         if not fixed:
-            logger.warning(
-                f"[RepairLoop] Attempt {attempt}: no code blocks found in AI response. "
-                f"Response preview (first 400 chars): {latest_ai_text[:400]!r}"
-            )
-
+            logger.warning(f"[RepairLoop] Attempt {attempt}: no code blocks found in AI response.")
 
         try:
             latest_verif = runner.run_verification()
@@ -450,21 +371,18 @@ async def start_run(payload: RunControlRequest):
         or os.environ.get("GOOGLE_API_KEY", "")
     )
 
-    # Stage 1: Scan
     source_files = collect_workspace_files(workspace)
     await publish_stage_event(
         EventType.CLONE_COMPLETED, "Repository Scanned", completed=1,
         log_line=f"[Scan] {len(source_files)} source file(s) found in {workspace}",
     )
 
-    # Stage 2: Language detection
     exts_found = sorted({os.path.splitext(p[0])[1] for p in source_files})
     await publish_stage_event(
         EventType.DETECTION_COMPLETED, "Language & Environment Detected", completed=2,
         log_line=f"[Detect] Types: {', '.join(exts_found) or 'none'}",
     )
 
-    # Stage 3: Docker
     env_vars = {
         "GEMINI_API_KEY": api_key, "GOOGLE_API_KEY": api_key,
         "OPENAI_API_KEY": os.environ.get("OPENAI_API_KEY", ""),
@@ -482,7 +400,6 @@ async def start_run(payload: RunControlRequest):
         EventType.CONTAINER_STARTED, "Docker Sandbox Ready", completed=3, log_line=docker_log,
     )
 
-    # Stage 4: Dependencies
     if sandbox and getattr(sandbox, "container", None):
         dep_res = sandbox.exec_command("python -m pip --version")
         dep_log = f"[Deps] {dep_res.stdout.strip()[:100] or 'pip active'}"
@@ -492,7 +409,6 @@ async def start_run(payload: RunControlRequest):
         EventType.DEPENDENCY_INSTALL_COMPLETED, "Dependencies Verified", completed=4, log_line=dep_log,
     )
 
-    # Stage 5: Verification
     await publish_stage_event(
         EventType.TESTS_STARTED, "Running Verification Suite", completed=4,
         log_line="[Verify] Running lint + tests...",
@@ -524,7 +440,6 @@ async def start_run(payload: RunControlRequest):
         log_line=verif_log, payload={"pytest_results": initial_verif.pytest_results},
     )
 
-    # Stage 6: AI Recursive Repair
     await publish_stage_event(
         EventType.ANALYSIS_STARTED, "AI Recursive Repair Engine", completed=5,
         log_line=f"[AI] Model: {model_name} | Max 6 attempts | No token cap",
@@ -555,7 +470,6 @@ async def start_run(payload: RunControlRequest):
         log_line=repair_log, payload={"modified_files": modified_files},
     )
 
-    # Stage 7: Report + Git commit
     elapsed = round(time.time() - start_time, 2)
     tests_passed = final_verif.pytest_results.get("passed", 0)
     tests_total = final_verif.pytest_results.get("total", 0)
@@ -635,7 +549,9 @@ async def resume_run(payload: RunControlRequest):
 @router.post("/run/cancel", response_model=RunControlResponse, status_code=status.HTTP_200_OK)
 async def cancel_run(payload: RunControlRequest):
     return RunControlResponse(session_id=payload.session_id, status="cancelled", message="Execution cancelled")
+'''
 
+with open(r"d:\Billu-Gang\Billu-Gang\backend\core\routes\run_routes.py", "w", encoding="utf-8", newline="\n") as f:
+    f.write(NEW_CONTENT.strip() + "\n")
 
-
-
+print(f"Written {len(NEW_CONTENT.strip().splitlines())} lines to run_routes.py")

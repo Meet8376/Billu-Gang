@@ -1,3 +1,4 @@
+import path from 'path';
 import { SessionInfo, ReviewerSummary, MemoryItem } from './apiTypes.js';
 import { parseRepoName } from '../utils/formatters.js';
 
@@ -51,7 +52,7 @@ export class BackendApiClient {
     }
   }
 
-  async submitIssue(sessionId: string, issueDescription: string, modelName?: string): Promise<{ success: boolean; data?: any }> {
+  async submitIssue(sessionId: string, issueDescription: string, modelName?: string, workspacePath?: string): Promise<{ success: boolean; data?: any }> {
     try {
       const apiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY || '';
       const response = await fetch(`${this.baseUrl}/run`, {
@@ -60,7 +61,8 @@ export class BackendApiClient {
         body: JSON.stringify({
           session_id: sessionId,
           prompt: issueDescription,
-          model_name: modelName || 'gemini-2.5-flash',
+          model_name: modelName || 'gemini-3.5-flash-lite',
+          workspace_path: workspacePath ? path.resolve(workspacePath) : undefined,
           api_key: apiKey
         })
       });

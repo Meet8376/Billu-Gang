@@ -1,6 +1,9 @@
-from utils import count_completed
+#!/usr/bin/env python3
 
-def test_count():
+from todo_app.utils import count_completed
+
+
+def test_count() -> None:
     todos = [
         {"done": True},
         {"done": False},
