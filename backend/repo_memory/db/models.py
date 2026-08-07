@@ -4,7 +4,7 @@ SQLAlchemy ORM Models
 Database schema for tiered memory, repository index, and session state.
 """
 
-from datetime import datetime
+from datetime import datetime, timezone
 from enum import Enum
 from typing import Optional
 
@@ -24,6 +24,10 @@ from sqlalchemy.orm import declarative_base, relationship
 Base = declarative_base()
 
 
+def utcnow():
+    return datetime.now(timezone.utc)
+
+
 class MemoryTier(str, Enum):
     """Seven-tier memory hierarchy"""
     WORKING = "working"  # Current task working state
@@ -41,7 +45,7 @@ class SessionModel(Base):
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     repo_path = Column(String(512), nullable=False)
-    started_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    started_at = Column(DateTime, default=utcnow, nullable=False)
     ended_at = Column(DateTime, nullable=True)
     model_provider = Column(String(64), nullable=True)
     meta = Column(JSON, default=dict)
@@ -66,7 +70,7 @@ class MemoryItemModel(Base):
     # Provenance tracking
     source_file = Column(String(512), nullable=True)  # Origin file path
     source_line = Column(Integer, nullable=True)  # Line number in source
-    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    created_at = Column(DateTime, default=utcnow, nullable=False)
     created_by = Column(String(128), nullable=True)  # Model ID that created this
     confidence = Column(Float, default=1.0)  # Confidence score (0-1)
     
@@ -118,7 +122,7 @@ class SymbolIndexModel(Base):
     docstring = Column(Text, nullable=True)
     
     # Metadata
-    indexed_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    indexed_at = Column(DateTime, default=utcnow, nullable=False)
     file_hash = Column(String(64), nullable=True)  # For invalidation detection
     meta = Column(JSON, default=dict)
 
@@ -152,7 +156,7 @@ class CallGraphEdgeModel(Base):
     # Edge metadata
     edge_type = Column(String(32), nullable=False)  # call, import, inheritance
     confidence = Column(Float, default=1.0)
-    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    created_at = Column(DateTime, default=utcnow, nullable=False)
     meta = Column(JSON, default=dict)
 
     # Indexes
