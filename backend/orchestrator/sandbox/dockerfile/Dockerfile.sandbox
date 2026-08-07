@@ -1,0 +1,43 @@
+# AE-01 Sandbox Base Dockerfile
+# Scoped execution environment with Python 3.11, Node.js, Git, and build tools
+
+FROM python:3.11-slim
+
+# Prevent interactive prompts during apt install
+ENV DEBIAN_FRONTEND=noninteractive
+ENV PYTHONUNBUFFERED=1
+
+# Install system dependencies & Node.js runtime
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    git \
+    curl \
+    build-essential \
+    pkg-config \
+    ca-certificates \
+    gnupg \
+    tar \
+    gzip \
+    unzip \
+    jq \
+    && curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
+    && apt-get install -y nodejs \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
+
+# Upgrade pip & install basic Python test runners inside sandbox
+RUN pip install --no-cache-dir --upgrade pip pytest pytest-asyncio coverage ruff mypy
+
+# Create non-root sandbox user for security boundary
+RUN useradd -m -s /bin/bash sandboxuser
+
+# Set working directory to scoped workspace volume
+WORKDIR /workspace
+
+# Set default ownership
+RUN chown -R sandboxuser:sandboxuser /workspace
+
+# Switch to sandbox user by default
+USER sandboxuser
+
+# Keep container alive or accept entrypoint commands
+CMD ["/bin/bash"]
