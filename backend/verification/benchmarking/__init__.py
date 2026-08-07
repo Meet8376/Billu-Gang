@@ -10,6 +10,10 @@ from backend.verification.benchmarking.sample_repos import (
     get_sample_benchmark_issue,
     setup_sample_repo_in_dir,
 )
+from backend.verification.benchmarking.issue_loader import (
+    IssueLoader,
+    load_benchmark_issue,
+)
 
 __all__ = [
     "SampleBugRepo",
@@ -17,4 +21,6 @@ __all__ = [
     "get_sample_bug_repo",
     "get_sample_benchmark_issue",
     "setup_sample_repo_in_dir",
+    "IssueLoader",
+    "load_benchmark_issue",
 ]

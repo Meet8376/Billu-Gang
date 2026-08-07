@@ -22,6 +22,10 @@ from backend.verification.pipeline.runner import (
     VerificationRun,
     VerificationPipeline,
 )
+from backend.verification.pipeline.reviewer_engine import (
+    ReviewerSummary,
+    ReviewerEngine,
+)
 
 __all__ = [
     "TestResultStatus",
@@ -37,4 +41,6 @@ __all__ = [
     "StageResult",
     "VerificationRun",
     "VerificationPipeline",
+    "ReviewerSummary",
+    "ReviewerEngine",
 ]
