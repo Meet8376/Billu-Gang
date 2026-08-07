@@ -4,6 +4,7 @@ interface TraceViewProps {
     verifications?: VerificationItem[];
     logs?: string[];
     recoveringReason?: string;
+    isVerificationRunning?: boolean;
 }
 export declare const TraceView: React.FC<TraceViewProps>;
 export {};
