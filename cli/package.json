@@ -1,0 +1,36 @@
+{
+  "name": "@ae-01/cli",
+  "version": "1.0.0",
+  "description": "Terminal CLI and Ink TUI for AE-01 Unified Agentic Coding Harness",
+  "main": "dist/index.js",
+  "type": "module",
+  "bin": {
+    "ae-harness": "dist/index.js"
+  },
+  "scripts": {
+    "dev": "tsx src/index.ts",
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "dependencies": {
+    "commander": "^12.0.0",
+    "eventsource": "^2.0.2",
+    "ink": "^5.0.1",
+    "ink-select-input": "^6.0.0",
+    "ink-spinner": "^5.0.0",
+    "ink-text-input": "^6.0.0",
+    "react": "^18.2.0",
+    "zod": "^3.22.4"
+  },
+  "devDependencies": {
+    "@types/eventsource": "^1.1.15",
+    "@types/node": "^20.11.0",
+    "@types/react": "^18.2.48",
+    "ink-testing-library": "^3.0.0",
+    "tsx": "^4.7.0",
+    "typescript": "^5.3.3",
+    "vitest": "^1.2.1"
+  }
+}

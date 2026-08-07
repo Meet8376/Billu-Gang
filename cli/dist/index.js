@@ -1,0 +1,34 @@
+#!/usr/bin/env node
+import { Command } from 'commander';
+import { runRepl } from './cli.js';
+const program = new Command();
+program
+    .name('ae-harness')
+    .description('AE-01 Unified Agentic Coding Harness — Terminal CLI')
+    .version('1.0.0');
+program
+    .command('init')
+    .description('Initialize and scan target repository for agentic harness session')
+    .option('-r, --repo <path>', 'Path to target repository workspace', '.')
+    .option('-m, --model <provider>', 'LLM Provider / Model identity', 'claude-3-5-sonnet')
+    .action((options) => {
+    runRepl(options.repo, options.model);
+});
+program
+    .command('run')
+    .description('Start autonomous coding run on specified issue')
+    .option('-r, --repo <path>', 'Target repo', '.')
+    .option('-m, --model <provider>', 'Model backend', 'claude-3-5-sonnet')
+    .action((options) => {
+    runRepl(options.repo, options.model);
+});
+program
+    .command('review')
+    .description('Open Reviewer Summary view for completed task')
+    .action(() => {
+    runRepl('.', 'claude-3-5-sonnet');
+});
+program.parse(process.argv);
+if (!process.argv.slice(2).length) {
+    runRepl('.', 'claude-3-5-sonnet');
+}
