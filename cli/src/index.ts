@@ -196,8 +196,9 @@ async function main() {
     }
     const targetRepo = ensureClonedRepo(config.repoUrl, config.branch);
     startDockerContainerForWorkspace(targetRepo);
-    runRepl(targetRepo, config.model);
+    runRepl(targetRepo, config.model, config.tier, config.algoBalance);
     return;
+
   }
 
   const program = new Command();
@@ -213,7 +214,8 @@ async function main() {
     .option('-r, --repo <path>', 'Path or URL to target repository workspace')
     .option('-k, --api-key <key>', 'Gemini API Key')
     .option('-b, --branch <name>', 'Target branch name', 'main')
-    .option('-m, --model <provider>', 'LLM Provider / Model identity', 'gemini-2.5-flash')
+    .option('-m, --model <provider>', 'LLM Provider / Model identity', 'gemini-3.5-flash-lite')
+
     .action(async (options) => {
       let config = {
         repoUrl: options.repo,
@@ -237,23 +239,33 @@ async function main() {
     .option('-r, --repo <path>', 'Target repo')
     .option('-k, --api-key <key>', 'Gemini API Key')
     .option('-b, --branch <name>', 'Target branch name', 'main')
-    .option('-m, --model <provider>', 'Model backend', 'gemini-2.5-flash')
+    .option('-m, --model <provider>', 'Model backend', 'gemini-3.5-flash-lite')
+
     .action(async (options) => {
       let config = {
         repoUrl: options.repo,
         apiKey: options.apiKey,
         branch: options.branch,
-        model: options.model
+        model: options.model,
+        tier: undefined as 'free' | 'algo' | undefined,
+        algoBalance: undefined as number | undefined
       };
 
-      if (!config.repoUrl || !config.apiKey || !config.model) {
-        config = await runInteractiveStartup(config);
+      if (!config.repoUrl) {
+        const startup = await runInteractiveStartup(config);
+        config.repoUrl = startup.repoUrl;
+        config.apiKey = startup.apiKey;
+        config.branch = startup.branch;
+        config.model = startup.model;
+        config.tier = startup.tier;
+        config.algoBalance = startup.algoBalance;
       }
 
       const targetRepo = ensureClonedRepo(config.repoUrl, config.branch);
       startDockerContainerForWorkspace(targetRepo);
-      runRepl(targetRepo, config.model);
+      runRepl(targetRepo, config.model, config.tier, config.algoBalance);
     });
+
 
   program
     .command('review')

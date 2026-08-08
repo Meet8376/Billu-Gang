@@ -57,13 +57,15 @@ class GeminiAdapter(LangChainAdapter):
         elif resolved_key:
             active_chat_model = None
             try:
+                import warnings
+                warnings.filterwarnings("ignore", category=UserWarning, module="langchain_google_genai")
                 from langchain_google_genai import ChatGoogleGenerativeAI
-                active_chat_model = ChatGoogleGenerativeAI(
-                    model=target_model,
-                    google_api_key=resolved_key,
-                    temperature=0.2,
-                )
+                kwargs = {"model": target_model, "google_api_key": resolved_key}
+                if "lite" not in target_model.lower():
+                    kwargs["temperature"] = 0.2
+                active_chat_model = ChatGoogleGenerativeAI(**kwargs)
             except Exception as e:
+
                 logger.warning(f"[GeminiAdapter] Failed to initialize ChatGoogleGenerativeAI: {e}")
                 try:
                     import google.generativeai as genai

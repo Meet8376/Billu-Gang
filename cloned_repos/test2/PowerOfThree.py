@@ -1,6 +1,9 @@
+# File: PowerOfThree.py
 #!/usr/bin/env python3
 
+
 class Solution:
+
     def isPowerOfThree(self, n: int) -> bool:
         if n <= 0:
             return False

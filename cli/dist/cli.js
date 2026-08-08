@@ -1,10 +1,12 @@
-import { jsx as _jsx } from "react/jsx-runtime";
+import { jsx as _jsx, jsxs as _jsxs } from "react/jsx-runtime";
 import { useState, useEffect } from 'react';
 import { render } from 'ink';
 import fs from 'fs';
 import path from 'path';
 import { execSync } from 'child_process';
 import { Layout } from './components/Layout.js';
+import { TierSelectionPrompt } from './components/TierSelectionPrompt.js';
+import { AlgorandPaymentPrompt } from './components/AlgorandPaymentPrompt.js';
 
 import { SSEClient } from './sse/SSEClient.js';
 import { startMockSSEStream } from './sse/mockSSEListener.js';
@@ -13,6 +15,7 @@ import { SlashCommandRouter } from './router/SlashCommandRouter.js';
 import { BackendApiClient } from './api/BackendApiClient.js';
 import { handleSlashCommand } from './router/commandHandlers.js';
 import { parseRepoName } from './utils/formatters.js';
+
 function scanTargetRepoFiles(repoPath) {
     try {
         const absPath = path.isAbsolute(repoPath)
@@ -52,7 +55,8 @@ function scanTargetRepoFiles(repoPath) {
         return { files: [], targetPath: `cloned_repos/${path.basename(repoPath)}`, folderName: path.basename(repoPath) };
     }
 }
-export const AppContainer = ({ initialRepoPath, initialModel = 'gemini-2.5-flash', useMockStream = process.env.USE_MOCK === 'true' }) => {
+export const AppContainer = ({ initialRepoPath, initialModel = 'gemini-3.5-flash-lite', initialTier, initialAlgoBalance = 5.0, useMockStream = process.env.USE_MOCK === 'true' }) => {
+    const [appStep, setAppStep] = useState(initialTier ? 'harness' : 'tier');
     const [runCount, setRunCount] = useState(1);
     const [pendingApproval, setPendingApproval] = useState(undefined);
     const initialScan = scanTargetRepoFiles(initialRepoPath);
@@ -61,13 +65,17 @@ export const AppContainer = ({ initialRepoPath, initialModel = 'gemini-2.5-flash
             sessionId: 'ae-sess-001',
             repoName: parseRepoName(initialRepoPath),
             branch: 'main',
-            modelProvider: initialModel || 'gemini-2.5-flash',
+            modelProvider: initialModel || 'gemini-3.5-flash-lite',
+
             elapsedSeconds: 0,
             tokensUsed: 0,
             costSoFar: 0.0,
             testsPassing: '5/5 passed',
-            sandboxState: 'sandboxed'
+            sandboxState: 'sandboxed',
+            tier: initialTier || 'free',
+            algoBalance: initialAlgoBalance
         },
+
         intakeSteps: [],
         intakeReady: true,
         taskTitle: 'Autonomous Sandbox Review & Verification',
@@ -81,6 +89,33 @@ export const AppContainer = ({ initialRepoPath, initialModel = 'gemini-2.5-flash
         verifications: [],
         logs: [`[System] Initializing session workspace at ${initialScan.targetPath}`]
     });
+
+    const handleSelectTier = (tier) => {
+        if (tier === 'free') {
+            setStreamState((prev) => ({
+                ...prev,
+                session: { ...prev.session, tier: 'free' },
+                logs: [...prev.logs, '[Tier] Free Tier selected (Bring Your Own API Key).']
+            }));
+            setAppStep('harness');
+        }
+        else {
+            setAppStep('algo_payment');
+        }
+    };
+
+    const handlePaymentConfirmed = (data) => {
+        setStreamState((prev) => ({
+            ...prev,
+            session: { ...prev.session, tier: 'algo', algoBalance: data.algoBalance },
+            logs: [
+                ...prev.logs,
+                `[Algorand] Payment confirmed on Testnet (${data.txHash}). Credited: ${data.algoBalance} ALGO ($${data.usdBalance.toFixed(2)} USD).`
+            ]
+        }));
+        setAppStep('harness');
+    };
+
     const [activeViewOverride, setActiveViewOverride] = useState(undefined);
     const [diffFileFilter, setDiffFileFilter] = useState(undefined);
     const [sseClient] = useState(() => new SSEClient());
@@ -123,13 +158,13 @@ export const AppContainer = ({ initialRepoPath, initialModel = 'gemini-2.5-flash
             return;
         }
         const parsed = SlashCommandRouter.parse(input);
-        if (parsed.type === 'approve') {
-            setPendingApproval({
-                command: 'git commit -m "Apply verified code fixes" && git push origin main',
-                reason: 'Commit and push verified code fixes to GitHub repository'
-            });
+        const lowInput = input.trim().toLowerCase();
+        if (parsed.type === 'approve' || lowInput === 'y' || lowInput === 'yes' || lowInput === 'approve' || lowInput === '/approve' || lowInput === '/push' || lowInput === 'push') {
+            handleApprovalResponse(true);
             return;
         }
+
+
 
 
         if (parsed.type !== 'unknown') {
@@ -163,17 +198,26 @@ export const AppContainer = ({ initialRepoPath, initialModel = 'gemini-2.5-flash
             if (runRes.success && runRes.data) {
                 const resData = runRes.data;
                 const testsVal = resData.tests_summary || '5/5 passed';
-                setStreamState((prev) => ({
-                    ...prev,
-                    taskNodes: [
-                        { id: '1', label: 'Scan repository workspace', status: 'done', detail: 'Workspace loaded' },
-                        { id: '2', label: 'Parse AST symbol graph', status: 'done', detail: 'Symbols mapped' },
-                        { id: '3', label: 'Execute verification test suite', status: 'done', detail: testsVal },
-                        { id: '4', label: 'AI Code Review', status: 'done', detail: 'Review complete' },
-                        { id: '5', label: 'Push verified patch to GitHub', status: 'running', detail: 'Awaiting push approval' }
-                    ],
-                    session: { ...prev.session, sandboxState: 'sandboxed', testsPassing: testsVal }
-                }));
+                setStreamState((prev) => {
+                    const currentAlgo = prev.session.algoBalance ?? 5.0;
+                    const newAlgo = Math.max(0, parseFloat((currentAlgo - 0.15).toFixed(2)));
+                    return {
+                        ...prev,
+                        taskNodes: [
+                            { id: '1', label: 'Scan repository workspace', status: 'done', detail: 'Workspace loaded' },
+                            { id: '2', label: 'Parse AST symbol graph', status: 'done', detail: 'Symbols mapped' },
+                            { id: '3', label: 'Execute verification test suite', status: 'done', detail: testsVal },
+                            { id: '4', label: 'AI Code Review', status: 'done', detail: 'Review complete' },
+                            { id: '5', label: 'Push verified patch to GitHub', status: 'running', detail: 'Awaiting push approval' }
+                        ],
+                        session: {
+                            ...prev.session,
+                            algoBalance: prev.session.tier === 'algo' ? newAlgo : prev.session.algoBalance,
+                            sandboxState: 'sandboxed',
+                            testsPassing: testsVal
+                        }
+                    };
+                });
                 // Prompt user to push code to GitHub
                 setPendingApproval({
                     command: 'git push origin main',
@@ -245,9 +289,18 @@ export const AppContainer = ({ initialRepoPath, initialModel = 'gemini-2.5-flash
             }));
         }
     };
+
+    if (appStep === 'tier') {
+        return _jsx(TierSelectionPrompt, { onSelectTier: handleSelectTier });
+    }
+    if (appStep === 'algo_payment') {
+        return _jsx(AlgorandPaymentPrompt, { onPaymentConfirmed: handlePaymentConfirmed, onCancel: () => setAppStep('tier') });
+    }
     return (_jsx(Layout, { session: streamState.session, onCommandSubmit: handleCommandSubmit, taskTitle: streamState.taskTitle, taskNodes: streamState.taskNodes, activeViewOverride: activeViewOverride, onClearViewOverride: () => setActiveViewOverride(undefined), diffFileFilter: diffFileFilter, pendingApproval: pendingApproval, onApprovalResponse: handleApprovalResponse }));
 };
-export function runRepl(repoPath = '.', model = 'gemini-2.5-flash') {
-    render(_jsx(AppContainer, { initialRepoPath: repoPath, initialModel: model }));
+export function runRepl(repoPath = '.', model = 'gemini-2.5-flash', tier, algoBalance) {
+    render(_jsx(AppContainer, { initialRepoPath: repoPath, initialModel: model, initialTier: tier, initialAlgoBalance: algoBalance }));
 }
+
+
 

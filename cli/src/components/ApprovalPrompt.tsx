@@ -34,14 +34,16 @@ export const ApprovalPrompt: React.FC<ApprovalPromptProps> = ({
 
   useInput(
     (input, key) => {
-      if (input.toLowerCase() === 'y') {
+      const char = input.toLowerCase();
+      if (char === 'y' || key.return) {
         onRespond(true);
-      } else if (input.toLowerCase() === 'n' || key.escape) {
+      } else if (char === 'n' || key.escape) {
         onRespond(false);
       }
     },
     { isActive: true }
   );
+
 
   return (
     <Box

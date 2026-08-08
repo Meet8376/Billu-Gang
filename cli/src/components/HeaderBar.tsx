@@ -23,8 +23,9 @@ export const HeaderBar: React.FC<HeaderBarProps> = ({ session, activeView }) => 
           BILLU GANG  |  AGENTIC HARNESS
         </Text>
         <Text color="magenta" bold>
-          [{session.modelProvider || 'gemini-2.5-flash'}]
+          [{session.modelProvider || 'gemini-3.5-flash-lite'}]
         </Text>
+
       </Box>
 
       {/* Info Row */}
@@ -32,6 +33,19 @@ export const HeaderBar: React.FC<HeaderBarProps> = ({ session, activeView }) => 
         <Text color="gray">
           Repo: <Text color="white" bold>{session.repoName}</Text>
         </Text>
+        <Text color="gray">|</Text>
+        <Text color="gray">
+          Tier: {session.tier === 'algo' ? (
+            (session.algoBalance ?? 0) > 0 ? (
+              <Text color="yellow" bold>[ALGO: {session.algoBalance} ALGO (${(session.algoBalance * 0.2).toFixed(2)})]</Text>
+            ) : (
+              <Text color="red" bold>[ALGO: UNPAID (0.0 ALGO)]</Text>
+            )
+          ) : (
+            <Text color="cyan" bold>[FREE TIER]</Text>
+          )}
+        </Text>
+
         <Text color="gray">|</Text>
         <Text color="gray">
           Branch: <Text color="cyan">{session.branch || 'main'}</Text>
@@ -42,10 +56,11 @@ export const HeaderBar: React.FC<HeaderBarProps> = ({ session, activeView }) => 
         </Text>
         <Text color="gray">|</Text>
         <Text color="gray">
-          View: <Text color="yellow" bold>{activeView === 'graph' ? 'Task Graph' : 'Diff View'}</Text>
+          View: <Text color="yellow" bold>{activeView === 'graph' ? 'Task Graph' : activeView === 'diff' ? 'Diff View' : 'SWE Benchmark'}</Text>
         </Text>
       </Box>
     </Box>
   );
 };
+
 

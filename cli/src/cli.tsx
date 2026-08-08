@@ -12,13 +12,17 @@ import { SlashCommandRouter } from './router/SlashCommandRouter.js';
 import { BackendApiClient } from './api/BackendApiClient.js';
 import { handleSlashCommand } from './router/commandHandlers.js';
 import { parseRepoName } from './utils/formatters.js';
+import { TierSelectionPrompt } from './components/TierSelectionPrompt.js';
+import { AlgorandPaymentPrompt } from './components/AlgorandPaymentPrompt.js';
+
 
 export interface AppProps {
   initialRepoPath: string;
   initialModel: string;
+  initialTier?: 'free' | 'algo';
+  initialAlgoBalance?: number;
   useMockStream?: boolean;
 }
-
 
 function scanTargetRepoFiles(repoPath: string): { files: string[]; targetPath: string; folderName: string } {
   try {
@@ -55,11 +59,17 @@ function scanTargetRepoFiles(repoPath: string): { files: string[]; targetPath: s
   }
 }
 
+type AppStep = 'tier' | 'algo_payment' | 'harness';
+
 export const AppContainer: React.FC<AppProps> = ({
   initialRepoPath,
-  initialModel = 'gemini-2.5-flash',
+  initialModel = 'gemini-3.5-flash-lite',
+
+  initialTier,
+  initialAlgoBalance = 5.0,
   useMockStream = process.env.USE_MOCK === 'true'
 }) => {
+  const [appStep, setAppStep] = useState<AppStep>(initialTier ? 'harness' : 'tier');
   const [runCount, setRunCount] = useState(1);
   const [pendingApproval, setPendingApproval] = useState<{ command: string; reason: string } | undefined>(undefined);
 
@@ -70,13 +80,17 @@ export const AppContainer: React.FC<AppProps> = ({
       sessionId: 'ae-sess-001',
       repoName: parseRepoName(initialRepoPath),
       branch: 'main',
-      modelProvider: initialModel || 'gemini-2.5-flash',
+      modelProvider: initialModel || 'gemini-3.5-flash-lite',
+
       elapsedSeconds: 0,
       tokensUsed: 0,
       costSoFar: 0.0,
       testsPassing: '5/5 passed',
-      sandboxState: 'sandboxed'
+      sandboxState: 'sandboxed',
+      tier: initialTier || 'free',
+      algoBalance: initialAlgoBalance
     },
+
     intakeSteps: [],
     intakeReady: true,
     taskTitle: 'Autonomous Sandbox Review & Verification',
@@ -90,6 +104,32 @@ export const AppContainer: React.FC<AppProps> = ({
     verifications: [],
     logs: [`[System] Initializing session workspace at ${initialScan.targetPath}`]
   });
+
+  const handleSelectTier = (tier: 'free' | 'algo') => {
+    if (tier === 'free') {
+      setStreamState((prev) => ({
+        ...prev,
+        session: { ...prev.session, tier: 'free' },
+        logs: [...prev.logs, '[Tier] Free Tier selected (Bring Your Own API Key).']
+      }));
+      setAppStep('harness');
+    } else {
+      setAppStep('algo_payment');
+    }
+  };
+
+  const handlePaymentConfirmed = (data: { algoBalance: number; usdBalance: number; txHash: string }) => {
+    setStreamState((prev) => ({
+      ...prev,
+      session: { ...prev.session, tier: 'algo', algoBalance: data.algoBalance },
+      logs: [
+        ...prev.logs,
+        `[Algorand] Payment confirmed on Testnet (${data.txHash}). Credited: ${data.algoBalance} ALGO ($${data.usdBalance.toFixed(2)} USD).`
+      ]
+    }));
+    setAppStep('harness');
+  };
+
 
   const [activeViewOverride, setActiveViewOverride] = useState<ActiveView | undefined>(undefined);
   const [diffFileFilter, setDiffFileFilter] = useState<string | undefined>(undefined);
@@ -139,13 +179,13 @@ export const AppContainer: React.FC<AppProps> = ({
     }
 
     const parsed = SlashCommandRouter.parse(input);
-    if (parsed.type === 'approve') {
-      setPendingApproval({
-        command: 'git commit -m "Apply verified code fixes" && git push origin main',
-        reason: 'Commit and push verified code fixes to GitHub repository'
-      });
+    const lowInput = input.trim().toLowerCase();
+    if (parsed.type === 'approve' || lowInput === 'y' || lowInput === 'yes' || lowInput === 'approve' || lowInput === '/approve' || lowInput === '/push' || lowInput === 'push') {
+      handleApprovalResponse(true);
       return;
     }
+
+
 
 
 
@@ -183,17 +223,26 @@ export const AppContainer: React.FC<AppProps> = ({
         const resData = runRes.data;
         const testsVal = resData.tests_summary || '5/5 passed';
 
-        setStreamState((prev) => ({
-          ...prev,
-          taskNodes: [
-            { id: '1', label: 'Scan repository workspace', status: 'done', detail: 'Workspace loaded' },
-            { id: '2', label: 'Parse AST symbol graph', status: 'done', detail: 'Symbols mapped' },
-            { id: '3', label: 'Execute verification test suite', status: 'done', detail: testsVal },
-            { id: '4', label: 'AI Code Review', status: 'done', detail: 'Review complete' },
-            { id: '5', label: 'Push verified patch to GitHub', status: 'running', detail: 'Awaiting push approval' }
-          ],
-          session: { ...prev.session, sandboxState: 'sandboxed', testsPassing: testsVal }
-        }));
+        setStreamState((prev) => {
+          const currentAlgo = prev.session.algoBalance ?? 5.0;
+          const newAlgo = Math.max(0, parseFloat((currentAlgo - 0.15).toFixed(2)));
+          return {
+            ...prev,
+            taskNodes: [
+              { id: '1', label: 'Scan repository workspace', status: 'done', detail: 'Workspace loaded' },
+              { id: '2', label: 'Parse AST symbol graph', status: 'done', detail: 'Symbols mapped' },
+              { id: '3', label: 'Execute verification test suite', status: 'done', detail: testsVal },
+              { id: '4', label: 'AI Code Review', status: 'done', detail: 'Review complete' },
+              { id: '5', label: 'Push verified patch to GitHub', status: 'running', detail: 'Awaiting push approval' }
+            ],
+            session: {
+              ...prev.session,
+              algoBalance: prev.session.tier === 'algo' ? newAlgo : prev.session.algoBalance,
+              sandboxState: 'sandboxed',
+              testsPassing: testsVal
+            }
+          };
+        });
 
         // Prompt user to push code to GitHub
         setPendingApproval({
@@ -265,6 +314,14 @@ export const AppContainer: React.FC<AppProps> = ({
     }
   };
 
+  if (appStep === 'tier') {
+    return <TierSelectionPrompt onSelectTier={handleSelectTier} />;
+  }
+
+  if (appStep === 'algo_payment') {
+    return <AlgorandPaymentPrompt onPaymentConfirmed={handlePaymentConfirmed} onCancel={() => setAppStep('tier')} />;
+  }
+
   return (
     <Layout
       session={streamState.session}
@@ -280,7 +337,19 @@ export const AppContainer: React.FC<AppProps> = ({
   );
 };
 
-
-export function runRepl(repoPath: string = '.', model: string = 'gemini-2.5-flash') {
-  render(<AppContainer initialRepoPath={repoPath} initialModel={model} />);
+export function runRepl(
+  repoPath: string = '.',
+  model: string = 'gemini-2.5-flash',
+  tier?: 'free' | 'algo',
+  algoBalance?: number
+) {
+  render(
+    <AppContainer
+      initialRepoPath={repoPath}
+      initialModel={model}
+      initialTier={tier}
+      initialAlgoBalance={algoBalance}
+    />
+  );
 }
+

@@ -23,7 +23,10 @@ export interface SessionInfo {
   costSoFar: number;
   testsPassing: string;
   sandboxState: 'active' | 'sandboxed' | 'idle' | 'paused';
+  tier?: 'free' | 'algo';
+  algoBalance?: number;
 }
+
 
 export interface DiffPatch {
   filePath: string;
