@@ -15,6 +15,12 @@ export async function handleSlashCommand(cmd, sessionId, apiClient) {
                     ? `Switched to Diff View (filter: ${cmd.filterArg}).`
                     : 'Switched to Diff View.'
             };
+        case 'benchmark':
+            return {
+                handledLocally: true,
+                activeViewTarget: 'benchmark',
+                feedbackMessage: 'Switched to SWE Benchmark View.'
+            };
         case 'approve':
             return {
                 handledLocally: true,
@@ -23,7 +29,7 @@ export async function handleSlashCommand(cmd, sessionId, apiClient) {
         case 'help':
             return {
                 handledLocally: true,
-                feedbackMessage: 'Available commands: /graph, /plan, /diff [file], /approve, /push, /help'
+                feedbackMessage: 'Available commands: /graph, /plan, /diff [file], /benchmark, /approve, /push, /help'
             };
         default:
             return {
@@ -32,3 +38,4 @@ export async function handleSlashCommand(cmd, sessionId, apiClient) {
             };
     }
 }
+

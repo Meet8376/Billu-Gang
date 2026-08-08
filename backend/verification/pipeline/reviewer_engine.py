@@ -42,7 +42,7 @@ class ReviewerEngine:
         rollback: Dict[str, Any],
         cost: Dict[str, Any],
     ) -> str:
-        status_icon = "✅" if status == "APPROVED" else ("⚠️" if status == "NEEDS_REVISION" else "❌")
+        status_icon = "[PASSED]" if status == "APPROVED" else ("[WARNING]" if status == "NEEDS_REVISION" else "[FAILED]")
         lines = [
             f"# Reviewer Summary {status_icon} [{status}]",
             f"**Session ID:** `{session_id}` | **Generated At:** `{datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S UTC')}`",
@@ -58,9 +58,10 @@ class ReviewerEngine:
 
         if uncertainties:
             for u in uncertainties:
-                lines.append(f"- ⚠️ {u}")
+                lines.append(f"- [WARNING] {u}")
         else:
             lines.append("- *No unverified risks identified. Proof of completion verified.*")
+
 
         lines.extend([
             "",

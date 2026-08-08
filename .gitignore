@@ -72,3 +72,7 @@ logs/
 tmp/
 temp/
 *.tmp
+
+# Dynamic Sandbox Repositories
+cloned_repos/
+

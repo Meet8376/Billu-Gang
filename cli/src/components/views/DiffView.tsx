@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Box, Text, useInput } from 'ink';
 import fs from 'fs';
 import path from 'path';
+import { execSync } from 'child_process';
 import { DiffPatch } from '../../api/apiTypes.js';
 
 interface DiffViewProps {
@@ -9,31 +10,121 @@ interface DiffViewProps {
   activeFileFilter?: string;
   runCount?: number;
   maxDiffLines?: number;
+  repoPath?: string;
 }
 
-function getActualRepoFiles(): string[] {
+function resolveTargetDir(targetRepo?: string): string {
   try {
+    if (targetRepo && path.isAbsolute(targetRepo) && fs.existsSync(targetRepo)) {
+      return targetRepo;
+    }
+    const localTarget = path.resolve(process.cwd(), targetRepo || '.');
+    if (fs.existsSync(localTarget) && fs.statSync(localTarget).isDirectory()) {
+      return localTarget;
+    }
     const parentClonedDir = path.resolve(process.cwd(), '..', 'cloned_repos');
-    let activeDir = process.cwd();
-
     if (fs.existsSync(parentClonedDir)) {
       const subdirs = fs.readdirSync(parentClonedDir, { withFileTypes: true });
       const firstDir = subdirs.find((s) => s.isDirectory());
       if (firstDir) {
-        activeDir = path.join(parentClonedDir, firstDir.name);
+        return path.join(parentClonedDir, firstDir.name);
+      }
+    }
+    return process.cwd();
+  } catch {
+    return process.cwd();
+  }
+}
+
+function parseGitDiffString(rawDiff: string): DiffPatch[] {
+  const patches: DiffPatch[] = [];
+  const files = rawDiff.split(/^diff --git /m).filter(Boolean);
+
+  for (const fileBlock of files) {
+    const lines = fileBlock.split('\n');
+    const headerMatch = lines[0].match(/a\/(.+?)\s+b\/(.+)/);
+    const filePath = headerMatch ? headerMatch[2] : 'modified_file.py';
+
+    let additions = 0;
+    let deletions = 0;
+    const diffHunks: string[] = [];
+    let lineNo = 1;
+
+    for (let i = 1; i < lines.length; i++) {
+      const line = lines[i];
+      if (line.startsWith('---') || line.startsWith('+++') || line.startsWith('index ')) {
+        continue;
+      }
+      if (line.startsWith('@@')) {
+        diffHunks.push(` ${line}`);
+        continue;
+      }
+      if (line.startsWith('+')) {
+        additions++;
+        diffHunks.push(`  ${lineNo} + ${line.slice(1)}`);
+        lineNo++;
+      } else if (line.startsWith('-')) {
+        deletions++;
+        diffHunks.push(`  ${lineNo} - ${line.slice(1)}`);
+      } else if (line.startsWith(' ')) {
+        diffHunks.push(`  ${lineNo}   ${line.slice(1)}`);
+        lineNo++;
       }
     }
 
-    const found: string[] = [];
-    const entries = fs.readdirSync(activeDir, { withFileTypes: true });
+    if (diffHunks.length > 0) {
+      patches.push({
+        filePath,
+        additions,
+        deletions,
+        diffHunks
+      });
+    }
+  }
+
+  return patches;
+}
+
+function getLiveWorkspacePatches(targetDir: string): DiffPatch[] {
+  // 1. Try real git diff
+  try {
+    const rawDiff = execSync('git diff', { cwd: targetDir, stdio: 'pipe' }).toString();
+    if (rawDiff.trim()) {
+      return parseGitDiffString(rawDiff);
+    }
+    const stagedDiff = execSync('git diff --staged', { cwd: targetDir, stdio: 'pipe' }).toString();
+    if (stagedDiff.trim()) {
+      return parseGitDiffString(stagedDiff);
+    }
+    const headDiff = execSync('git diff HEAD~1', { cwd: targetDir, stdio: 'pipe' }).toString();
+    if (headDiff.trim()) {
+      return parseGitDiffString(headDiff);
+    }
+  } catch {
+    // Fall back to reading disk files
+  }
+
+  // 2. Fall back to reading files from workspace disk
+  try {
+    const patches: DiffPatch[] = [];
+    const entries = fs.readdirSync(targetDir, { withFileTypes: true });
     for (const entry of entries) {
-      if (entry.isFile() && !entry.name.startsWith('.')) {
-        found.push(entry.name);
+      if (entry.isFile() && (entry.name.endsWith('.py') || entry.name.endsWith('.md') || entry.name.endsWith('.json'))) {
+        const fullPath = path.join(targetDir, entry.name);
+        const content = fs.readFileSync(fullPath, 'utf-8');
+        const lines = content.split('\n').slice(0, 30);
+        const hunks = lines.map((l, i) => `  ${i + 1}   ${l}`);
+        patches.push({
+          filePath: entry.name,
+          additions: lines.length,
+          deletions: 0,
+          diffHunks: hunks
+        });
       }
     }
-    return found.length > 0 ? found : ['main.py'];
+    return patches;
   } catch {
-    return ['main.py'];
+    return [];
   }
 }
 
@@ -41,46 +132,33 @@ export const DiffView: React.FC<DiffViewProps> = ({
   patches,
   activeFileFilter,
   runCount = 1,
-  maxDiffLines = 8
+  maxDiffLines = 10,
+  repoPath
 }) => {
-  const actualFiles = getActualRepoFiles();
-  const primaryFile = actualFiles[0] || 'main.py';
-  const secondaryFile = actualFiles[1] || actualFiles[0] || 'README.md';
+  const targetDir = resolveTargetDir(repoPath);
+  const livePatches = getLiveWorkspacePatches(targetDir);
 
-  const dynamicPatches: DiffPatch[] =
+  const displayPatches: DiffPatch[] =
     patches && patches.length > 0
       ? patches
-      : [
-          {
-            filePath: primaryFile,
-            additions: 4,
-            deletions: 1,
-            diffHunks: [
-              `  1   # Royal Agentic Codebase Patch (Run #${runCount})`,
-              `  2 - # Legacy workspace initializer`,
-              `  2 + # Target workspace: ${primaryFile}`,
-              `  3 + # Verification test suite passed clean`,
-              `  4 + # Ready for GitHub repository push`,
-              `  5   import os`
-            ]
-          },
-          {
-            filePath: secondaryFile,
-            additions: 2,
-            deletions: 0,
-            diffHunks: [
-              `  1   # Royal Harness Documentation`,
-              `  2 + # Generated for GitHub execution run #${runCount}`
-            ]
-          }
-        ];
+      : livePatches.length > 0
+        ? livePatches
+        : [
+            {
+              filePath: 'No modified files detected',
+              additions: 0,
+              deletions: 0,
+              diffHunks: ['  1   Clean working tree. Workspace matched HEAD cleanly.']
+            }
+          ];
 
   const filteredPatches = activeFileFilter
-    ? dynamicPatches.filter((p) => p.filePath.toLowerCase().includes(activeFileFilter.toLowerCase()))
-    : dynamicPatches;
+    ? displayPatches.filter((p) => p.filePath.toLowerCase().includes(activeFileFilter.toLowerCase()))
+    : displayPatches;
 
   const [activeFileIndex, setActiveFileIndex] = useState(0);
-  const currentPatch = filteredPatches[activeFileIndex] || dynamicPatches[0];
+  const safeIndex = Math.min(activeFileIndex, Math.max(0, filteredPatches.length - 1));
+  const currentPatch = filteredPatches[safeIndex] || displayPatches[0];
 
   useInput(
     (input, key) => {
@@ -93,82 +171,79 @@ export const DiffView: React.FC<DiffViewProps> = ({
     { isActive: true }
   );
 
+  const folderName = path.basename(targetDir);
   const visibleHunks = currentPatch.diffHunks.slice(0, maxDiffLines);
 
   return (
     <Box flexDirection="column" paddingX={1} paddingY={0} flexGrow={1} overflow="hidden">
-      {/* Run Badge */}
-      <Box justifyContent="space-between" marginBottom={1}>
-        <Text color="yellow" bold>
-          ✦ CODE PATCHES & DIFFERENTIALS (Execution Run #{runCount})
+      {/* Run Badge & Active Directory */}
+      <Box justifyContent="space-between" marginBottom={1} flexShrink={0}>
+        <Text color="cyan" bold wrap="truncate">
+          LIVE WORKSPACE DIFF [{folderName}]
         </Text>
         <Text color="gray">
-          [Use ←/→ to switch files]
+          File {safeIndex + 1} of {filteredPatches.length} (left/right to switch)
         </Text>
       </Box>
 
-      {/* File Selector Bar */}
-      <Box gap={2} marginBottom={1}>
+      {/* File Selector Tabs */}
+      <Box gap={1} marginBottom={1} flexShrink={0} overflow="hidden">
         {filteredPatches.map((p, idx) => {
-          const isActive = idx === activeFileIndex;
+          const isSelected = idx === safeIndex;
           return (
-            <Box key={p.filePath} gap={1}>
+            <Box key={p.filePath + idx} paddingX={1}>
               <Text
-                color={isActive ? 'yellow' : 'gray'}
-                bold={isActive}
-                underline={isActive}
+                color={isSelected ? 'yellow' : 'gray'}
+                bold={isSelected}
+                underline={isSelected}
+                wrap="truncate"
               >
-                {isActive ? '⚜ ' : '📄 '}{p.filePath}
-              </Text>
-              <Text>
-                <Text color="green">+{p.additions}</Text> <Text color="red">−{p.deletions}</Text>
+                [{p.filePath} +{p.additions}/-{p.deletions}]
               </Text>
             </Box>
           );
         })}
       </Box>
 
-      {/* Current File Header Card */}
-      <Box borderStyle="single" borderColor="cyan" paddingX={1} justifyContent="space-between">
-        <Text color="cyan" bold>
-          File: {currentPatch.filePath}
-        </Text>
-        <Text>
-          <Text color="green" bold>+{currentPatch.additions} Additions</Text>{' '}
-          <Text color="red" bold>−{currentPatch.deletions} Deletions</Text>
-        </Text>
-      </Box>
+      {/* Diff Box */}
+      <Box
+        flexDirection="column"
+        borderStyle="single"
+        borderColor="yellow"
+        paddingX={1}
+        flexGrow={1}
+        overflow="hidden"
+      >
+        <Box justifyContent="space-between" marginBottom={1} flexShrink={0}>
+          <Text color="yellow" bold wrap="truncate">
+            {currentPatch.filePath}
+          </Text>
+          <Text color="gray">
+            +{currentPatch.additions} / -{currentPatch.deletions}
+          </Text>
+        </Box>
 
-      {/* Diff Content Box */}
-      <Box flexDirection="column" marginY={1} flexGrow={1} overflow="hidden">
-        {visibleHunks.map((line, idx) => {
-          if (line.includes(' + ')) {
+        <Box flexDirection="column" flexGrow={1} overflow="hidden">
+          {visibleHunks.map((hunk, idx) => {
+            let lineCol = 'gray';
+            if (hunk.includes(' + ')) lineCol = 'green';
+            else if (hunk.includes(' - ')) lineCol = 'red';
+            else if (hunk.startsWith(' @@')) lineCol = 'cyan';
+
             return (
-              <Text key={idx} color="green">
-                {line}
+              <Text key={idx} color={lineCol} wrap="truncate">
+                {hunk}
               </Text>
             );
-          }
-          if (line.includes(' - ')) {
-            return (
-              <Text key={idx} color="red" dimColor>
-                {line}
-              </Text>
-            );
-          }
-          return (
-            <Text key={idx} color="gray">
-              {line}
-            </Text>
-          );
-        })}
+          })}
+        </Box>
       </Box>
 
       {/* Footer Navigation */}
-      <Box marginTop={0} gap={3}>
-        <Text color="gray">←/→: switch file diff</Text>
+      <Box marginTop={0} gap={3} flexShrink={0}>
+        <Text color="gray">left/right: switch files</Text>
         <Text color="magenta">/graph: task graph</Text>
-        <Text color="yellow">/approve: push to github</Text>
+        <Text color="yellow">/benchmark: swe-bench</Text>
       </Box>
     </Box>
   );

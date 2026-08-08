@@ -209,10 +209,11 @@ class SecurityAuditor:
 
         is_clean = len(all_leaks) == 0
         summary = (
-            "✅ SECURITY AUDIT PASSED: Zero API keys or local host credentials detected in backend core."
+            "[PASSED] SECURITY AUDIT: Zero API keys or local host credentials detected in backend core."
             if is_clean
-            else f"⚠️ SECURITY AUDIT WARNING: {len(all_leaks)} potential credential leaks detected during security scan."
+            else f"[WARNING] SECURITY AUDIT: {len(all_leaks)} potential credential leaks detected during security scan."
         )
+
 
         return SecurityAuditReport(
             timestamp=datetime.utcnow(),

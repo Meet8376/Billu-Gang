@@ -24,7 +24,9 @@ class EventType(str, Enum):
     ANALYSIS_COMPLETED = "analysis_completed"
     REPORT_STARTED = "report_started"
     REPORT_COMPLETED = "report_completed"
+    PATCH_APPLIED = "patch_applied"
     EXECUTION_FAILED = "execution_failed"
+
 
     # Legacy & Auxiliary Events
     PLAN_UPDATED = "plan_updated"

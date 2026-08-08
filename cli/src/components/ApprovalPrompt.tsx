@@ -36,11 +36,11 @@ export const ApprovalPrompt: React.FC<ApprovalPromptProps> = ({
     (input, key) => {
       if (input.toLowerCase() === 'y') {
         onRespond(true);
-      } else if (input.toLowerCase() === 'n' || key.escape || key.return) {
+      } else if (input.toLowerCase() === 'n' || key.escape) {
         onRespond(false);
       }
     },
-    { isActive: Boolean(process.stdin && process.stdin.isTTY) }
+    { isActive: true }
   );
 
   return (
@@ -52,10 +52,10 @@ export const ApprovalPrompt: React.FC<ApprovalPromptProps> = ({
       paddingY={1}
       margin={1}
     >
-      {/* Crown Banner */}
+      {/* Banner */}
       <Box justifyContent="center" marginBottom={1}>
         <Text color="yellow" bold>
-          👑 ROYAL HARNESS — GITHUB CODE PUSH APPROVAL
+          SECURITY APPROVAL GATE - GIT COMMIT / PUSH
         </Text>
       </Box>
 
@@ -82,12 +82,13 @@ export const ApprovalPrompt: React.FC<ApprovalPromptProps> = ({
       {/* Safety Notice */}
       <Box marginY={1}>
         <Text color="yellow" bold>
-          🛡️  SECURITY NOTICE:
+          SECURITY NOTICE:
         </Text>
         <Text color="gray">
           {' '}This action will write local codebase modifications directly to GitHub.
         </Text>
       </Box>
+
 
       {/* Action Prompt */}
       <Box marginTop={1} gap={1} alignItems="center">

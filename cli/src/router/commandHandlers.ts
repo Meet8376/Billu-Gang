@@ -4,7 +4,7 @@ import { MemoryItem } from '../api/apiTypes.js';
 
 export interface CommandExecutionResult {
   handledLocally: boolean;
-  activeViewTarget?: 'graph' | 'diff';
+  activeViewTarget?: 'graph' | 'diff' | 'benchmark';
   fileFilter?: string;
   feedbackMessage?: string;
   memoryItems?: MemoryItem[];
@@ -33,6 +33,13 @@ export async function handleSlashCommand(
           : 'Switched to Diff View.'
       };
 
+    case 'benchmark':
+      return {
+        handledLocally: true,
+        activeViewTarget: 'benchmark',
+        feedbackMessage: 'Switched to SWE Benchmark View.'
+      };
+
     case 'approve':
       return {
         handledLocally: true,
@@ -42,8 +49,9 @@ export async function handleSlashCommand(
     case 'help':
       return {
         handledLocally: true,
-        feedbackMessage: 'Available commands: /graph, /plan, /diff [file], /approve, /push, /help'
+        feedbackMessage: 'Available commands: /graph, /plan, /diff [file], /benchmark, /approve, /push, /help'
       };
+
 
     default:
       return {

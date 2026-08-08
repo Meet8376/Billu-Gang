@@ -121,6 +121,7 @@ export async function runInteractiveStartup(flags: Partial<StartupConfig>): Prom
     }
   }
 
-  console.log('\n\x1b[32m✓ Multi-model setup complete. Initializing sandbox environment...\x1b[0m\n');
+  console.log('\n\x1b[32m[OK] Multi-model setup complete. Initializing sandbox environment...\x1b[0m\n');
   return { repoUrl, apiKey, branch, model };
 }
+

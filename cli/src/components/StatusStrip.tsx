@@ -20,18 +20,20 @@ export const StatusStrip: React.FC<StatusStripProps> = ({ session, currentTaskLa
       borderColor="gray"
       paddingX={1}
       justifyContent="space-between"
+      flexShrink={0}
+      overflow="hidden"
     >
-      <Box gap={2}>
+      <Box gap={1} flexShrink={1}>
         <Text color="yellow" bold>
-          👑 ROYAL HARNESS
+          HARNESS
         </Text>
         <Text color="gray">|</Text>
-        <Text color="gray">
+        <Text color="gray" wrap="truncate">
           Stage: <Text color="white" bold>{currentTaskLabel || 'Autonomous Agent Execution'}</Text>
         </Text>
       </Box>
 
-      <Box gap={2}>
+      <Box gap={1} flexShrink={0}>
         <Text color="gray">
           Tests: <Text color="green" bold>{session.testsPassing || '5/5 Passed'}</Text>
         </Text>
@@ -47,3 +49,4 @@ export const StatusStrip: React.FC<StatusStripProps> = ({ session, currentTaskLa
     </Box>
   );
 };
+

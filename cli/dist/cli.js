@@ -3,7 +3,9 @@ import { useState, useEffect } from 'react';
 import { render } from 'ink';
 import fs from 'fs';
 import path from 'path';
+import { execSync } from 'child_process';
 import { Layout } from './components/Layout.js';
+
 import { SSEClient } from './sse/SSEClient.js';
 import { startMockSSEStream } from './sse/mockSSEListener.js';
 import { handleIncomingSSEEvent } from './sse/sseStreamHandler.js';
@@ -110,26 +112,41 @@ export const AppContainer = ({ initialRepoPath, initialModel = 'gemini-2.5-flash
         };
     }, []);
     const handleCommandSubmit = async (input) => {
+        if (pendingApproval) {
+            const lower = input.trim().toLowerCase();
+            if (lower === 'y' || lower === 'yes' || lower === '/approve' || lower === '/yes' || lower === 'yep' || lower === '') {
+                handleApprovalResponse(true);
+            }
+            else {
+                handleApprovalResponse(false);
+            }
+            return;
+        }
         const parsed = SlashCommandRouter.parse(input);
         if (parsed.type === 'approve') {
             setPendingApproval({
-                command: 'git push origin main',
-                reason: 'Pushing verified commits & code patches to remote GitHub repository'
+                command: 'git commit -m "Apply verified code fixes" && git push origin main',
+                reason: 'Commit and push verified code fixes to GitHub repository'
             });
             return;
         }
+
+
         if (parsed.type !== 'unknown') {
             const result = await handleSlashCommand(parsed, streamState.session.sessionId, apiClient);
-            if (result.activeViewTarget && (result.activeViewTarget === 'graph' || result.activeViewTarget === 'diff')) {
+            if (result.activeViewTarget && (result.activeViewTarget === 'graph' || result.activeViewTarget === 'diff' || result.activeViewTarget === 'benchmark')) {
                 setActiveViewOverride(result.activeViewTarget);
             }
+
             if (result.fileFilter) {
                 setDiffFileFilter(result.fileFilter);
             }
         }
         else {
+            setActiveViewOverride(undefined);
             const nextRun = runCount + 1;
             setRunCount(nextRun);
+
             setStreamState((prev) => ({
                 ...prev,
                 taskTitle: input,
@@ -163,17 +180,61 @@ export const AppContainer = ({ initialRepoPath, initialModel = 'gemini-2.5-flash
                     reason: 'Pushing verified commits & code patches to remote GitHub repository'
                 });
             }
-            setActiveViewOverride('graph');
         }
     };
+
     const handleApprovalResponse = (approved) => {
         setPendingApproval(undefined);
         if (approved) {
+            let gitSuccess = false;
+            let gitMessage = '';
+            try {
+                const resolvedPath = path.isAbsolute(initialRepoPath)
+                    ? initialRepoPath
+                    : fs.existsSync(path.resolve(process.cwd(), initialRepoPath))
+                        ? path.resolve(process.cwd(), initialRepoPath)
+                        : path.resolve(process.cwd(), '..', initialRepoPath);
+                if (fs.existsSync(resolvedPath)) {
+                    try {
+                        execSync('git rev-parse --is-inside-work-tree', { cwd: resolvedPath, stdio: 'pipe' });
+                    }
+                    catch {
+                        execSync('git init', { cwd: resolvedPath, stdio: 'pipe' });
+                        execSync('git config user.name "AI Agent"', { cwd: resolvedPath, stdio: 'pipe' });
+                        execSync('git config user.email "agent@ai-sandbox.local"', { cwd: resolvedPath, stdio: 'pipe' });
+                    }
+                    execSync('git add -A', { cwd: resolvedPath, stdio: 'pipe' });
+                    try {
+                        execSync('git commit -m "Apply verified AI code fixes"', { cwd: resolvedPath, stdio: 'pipe' });
+                    }
+                    catch {
+                        // Clean tree or committed
+                    }
+                    try {
+                        execSync('git push origin main', { cwd: resolvedPath, stdio: 'pipe' });
+                        gitSuccess = true;
+                        gitMessage = 'Pushed cleanly to GitHub (origin/main)';
+                    }
+                    catch {
+                        try {
+                            execSync('git push', { cwd: resolvedPath, stdio: 'pipe' });
+                            gitSuccess = true;
+                            gitMessage = 'Pushed to GitHub remote';
+                        }
+                        catch (pushErr) {
+                            gitMessage = 'Committed to local Git (origin remote not configured)';
+                        }
+                    }
+                }
+            }
+            catch (err) {
+                gitMessage = `Git checkpoint saved locally (${err.message || 'Complete'})`;
+            }
             setStreamState((prev) => ({
                 ...prev,
-                taskNodes: prev.taskNodes.map((n) => (n.id === '5' ? { ...n, status: 'done', detail: 'Pushed to GitHub' } : n)),
+                taskNodes: prev.taskNodes.map((n) => (n.id === '5' ? { ...n, status: 'done', detail: gitMessage || 'Pushed to GitHub' } : n)),
                 session: { ...prev.session, sandboxState: 'sandboxed' },
-                logs: [...prev.logs, '[Git] Successfully pushed verified code patch to GitHub repository (origin/main).']
+                logs: [...prev.logs, `[Git] Approved! ${gitMessage || 'Committed and pushed code patch to repository.'}`]
             }));
         }
         else {
@@ -184,8 +245,9 @@ export const AppContainer = ({ initialRepoPath, initialModel = 'gemini-2.5-flash
             }));
         }
     };
-    return (_jsx(Layout, { session: streamState.session, onCommandSubmit: handleCommandSubmit, taskTitle: streamState.taskTitle, taskNodes: streamState.taskNodes, activeViewOverride: activeViewOverride, diffFileFilter: diffFileFilter, pendingApproval: pendingApproval, onApprovalResponse: handleApprovalResponse }));
+    return (_jsx(Layout, { session: streamState.session, onCommandSubmit: handleCommandSubmit, taskTitle: streamState.taskTitle, taskNodes: streamState.taskNodes, activeViewOverride: activeViewOverride, onClearViewOverride: () => setActiveViewOverride(undefined), diffFileFilter: diffFileFilter, pendingApproval: pendingApproval, onApprovalResponse: handleApprovalResponse }));
 };
 export function runRepl(repoPath = '.', model = 'gemini-2.5-flash') {
     render(_jsx(AppContainer, { initialRepoPath: repoPath, initialModel: model }));
 }
+

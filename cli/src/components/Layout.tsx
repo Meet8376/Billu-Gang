@@ -6,9 +6,10 @@ import { CommandLine } from './CommandLine.js';
 import { ApprovalPrompt } from './ApprovalPrompt.js';
 import { TaskGraphView } from './views/TaskGraphView.js';
 import { DiffView } from './views/DiffView.js';
+import { BenchmarkView } from './views/BenchmarkView.js';
 import { SessionInfo, TaskGraphNode } from '../api/apiTypes.js';
 
-export type ActiveView = 'graph' | 'diff';
+export type ActiveView = 'graph' | 'diff' | 'benchmark';
 
 export function useTerminalSize() {
   const { stdout } = useStdout();
@@ -43,6 +44,7 @@ interface LayoutProps {
   taskTitle: string;
   taskNodes: TaskGraphNode[];
   activeViewOverride?: ActiveView;
+  onClearViewOverride?: () => void;
   diffFileFilter?: string;
   pendingApproval?: { command: string; reason: string };
   onApprovalResponse?: (approved: boolean) => void;
@@ -54,6 +56,7 @@ export const Layout: React.FC<LayoutProps> = ({
   taskTitle,
   taskNodes,
   activeViewOverride,
+  onClearViewOverride,
   diffFileFilter,
   pendingApproval,
   onApprovalResponse
@@ -61,29 +64,45 @@ export const Layout: React.FC<LayoutProps> = ({
   const [activeView, setActiveView] = useState<ActiveView>('graph');
   const { columns, rows } = useTerminalSize();
 
-  const currentView = activeViewOverride || activeView;
+  useEffect(() => {
+    if (activeViewOverride) {
+      setActiveView(activeViewOverride);
+      if (onClearViewOverride) {
+        onClearViewOverride();
+      }
+    }
+  }, [activeViewOverride]);
+
+  const currentView = activeView;
 
   useInput(
     (input, key) => {
       if (key.tab) {
-        setActiveView((prev) => (prev === 'graph' ? 'diff' : 'graph'));
+        if (onClearViewOverride) onClearViewOverride();
+        setActiveView((prev) => (prev === 'graph' ? 'diff' : prev === 'diff' ? 'benchmark' : 'graph'));
       }
     },
     { isActive: true }
   );
 
+
   const handleCommand = (cmd: string) => {
     const trimmed = cmd.toLowerCase().trim();
     if (trimmed.startsWith('/plan') || trimmed.startsWith('/graph') || trimmed.startsWith('/tasks')) {
+      if (onClearViewOverride) onClearViewOverride();
       setActiveView('graph');
     } else if (trimmed.startsWith('/diff') || trimmed.startsWith('/patch')) {
+      if (onClearViewOverride) onClearViewOverride();
       setActiveView('diff');
+    } else if (trimmed.startsWith('/benchmark') || trimmed.startsWith('/eval') || trimmed.startsWith('/swe')) {
+      if (onClearViewOverride) onClearViewOverride();
+      setActiveView('benchmark');
     }
     onCommandSubmit(cmd);
   };
 
-  // Calculate dynamic line bounds to eliminate flickering
-  const availableContentRows = Math.max(5, rows - 12);
+  // Calculate dynamic line bounds to eliminate flickering on shrinking terminals
+  const availableContentRows = Math.max(1, rows - 11);
 
   const renderMainPane = () => {
     switch (currentView) {
@@ -100,8 +119,18 @@ export const Layout: React.FC<LayoutProps> = ({
           <DiffView
             activeFileFilter={diffFileFilter}
             maxDiffLines={availableContentRows}
+            repoPath={session.repoName}
           />
         );
+      case 'benchmark':
+        return (
+          <BenchmarkView
+            currentRepo={session.repoName}
+            currentTaskPrompt={taskTitle}
+            currentTestStatus={session.testsPassing}
+          />
+        );
+
       default:
         return (
           <TaskGraphView
@@ -115,18 +144,18 @@ export const Layout: React.FC<LayoutProps> = ({
 
   return (
     <Box flexDirection="column" width={columns} height={rows} overflow="hidden">
-      {/* 1. ROYAL HEADER BAR */}
+      {/* 1. HEADER BAR */}
       <HeaderBar session={session} activeView={currentView} />
 
       {/* 2. VIEW SWITCHER TABS BAR */}
-      <Box paddingX={1} marginY={0} gap={2}>
+      <Box paddingX={1} marginY={0} gap={2} flexShrink={0}>
         <Box gap={1}>
           <Text
             color={currentView === 'graph' ? 'yellow' : 'gray'}
             bold={currentView === 'graph'}
             underline={currentView === 'graph'}
           >
-            [ ❖ Task Graph {currentView === 'graph' ? '(Active)' : ''} ]
+            [ Task Graph {currentView === 'graph' ? '(Active)' : ''} ]
           </Text>
         </Box>
         <Box gap={1}>
@@ -135,10 +164,22 @@ export const Layout: React.FC<LayoutProps> = ({
             bold={currentView === 'diff'}
             underline={currentView === 'diff'}
           >
-            [ ✦ Diff View {currentView === 'diff' ? '(Active)' : ''} ]
+            [ Diff View {currentView === 'diff' ? '(Active)' : ''} ]
+          </Text>
+        </Box>
+        <Box gap={1}>
+          <Text
+            color={currentView === 'benchmark' ? 'yellow' : 'gray'}
+            bold={currentView === 'benchmark'}
+            underline={currentView === 'benchmark'}
+          >
+            [ SWE Benchmark {currentView === 'benchmark' ? '(Active)' : ''} ]
           </Text>
         </Box>
       </Box>
+
+
+
 
       {/* 3. MAIN PANE */}
       <Box
@@ -161,11 +202,9 @@ export const Layout: React.FC<LayoutProps> = ({
         )}
       </Box>
 
-      {/* 4. ROYAL STATUS STRIP */}
-      <StatusStrip session={session} currentTaskLabel={taskTitle} />
-
-      {/* 5. ROYAL COMMAND / INPUT LINE */}
-      <CommandLine onSubmit={handleCommand} disabled={Boolean(pendingApproval)} />
+      {/* 5. COMMAND / INPUT LINE */}
+      <CommandLine onSubmit={handleCommand} disabled={false} />
     </Box>
   );
 };
+

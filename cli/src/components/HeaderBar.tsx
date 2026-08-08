@@ -15,11 +15,12 @@ export const HeaderBar: React.FC<HeaderBarProps> = ({ session, activeView }) => 
       borderColor="yellow"
       paddingX={1}
       marginY={0}
+      flexShrink={0}
     >
       {/* Title Bar */}
       <Box justifyContent="space-between" alignItems="center">
         <Text color="yellow" bold>
-          👑 BILLU GANG  │  ROYAL AGENTIC HARNESS
+          BILLU GANG  |  AGENTIC HARNESS
         </Text>
         <Text color="magenta" bold>
           [{session.modelProvider || 'gemini-2.5-flash'}]
@@ -27,7 +28,7 @@ export const HeaderBar: React.FC<HeaderBarProps> = ({ session, activeView }) => 
       </Box>
 
       {/* Info Row */}
-      <Box gap={2} marginTop={0}>
+      <Box gap={1} marginTop={0} flexWrap="wrap">
         <Text color="gray">
           Repo: <Text color="white" bold>{session.repoName}</Text>
         </Text>
@@ -41,9 +42,10 @@ export const HeaderBar: React.FC<HeaderBarProps> = ({ session, activeView }) => 
         </Text>
         <Text color="gray">|</Text>
         <Text color="gray">
-          View: <Text color="yellow" bold>{activeView === 'graph' ? '❖ Task Graph' : '✦ Diff View'}</Text>
+          View: <Text color="yellow" bold>{activeView === 'graph' ? 'Task Graph' : 'Diff View'}</Text>
         </Text>
       </Box>
     </Box>
   );
 };
+

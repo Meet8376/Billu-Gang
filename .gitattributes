@@ -1,0 +1,2 @@
+# Disable line ending conversions completely to eliminate all Git CRLF/LF warning popups
+* -text

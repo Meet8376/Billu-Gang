@@ -39,24 +39,24 @@ export const TaskGraphView: React.FC<TaskGraphViewProps> = ({
         onSelectNode(defaultNodes[selectedIndex]);
       }
     },
-    { isActive: Boolean(process.stdin && process.stdin.isTTY) }
+    { isActive: true }
   );
 
   const getStatusBadge = (status: string) => {
     switch (status) {
       case 'done':
       case 'completed':
-        return <Text color="green" bold>✔ Done</Text>;
+        return <Text color="green" bold>[DONE]</Text>;
       case 'running':
         return (
           <Text color="yellow" bold>
-            <Spinner type="dots" /> Executing
+            <Spinner type="dots" /> [RUN]
           </Text>
         );
       case 'failed':
-        return <Text color="red" bold>✖ Failed</Text>;
+        return <Text color="red" bold>[FAIL]</Text>;
       default:
-        return <Text color="gray">◈ Pending</Text>;
+        return <Text color="gray">[WAIT]</Text>;
     }
   };
 
@@ -66,12 +66,12 @@ export const TaskGraphView: React.FC<TaskGraphViewProps> = ({
   return (
     <Box flexDirection="column" paddingX={1} paddingY={0} flexGrow={1} overflow="hidden">
       {/* Title */}
-      <Box justifyContent="space-between" marginBottom={1}>
-        <Text color="yellow" bold>
-          ❖ TASK EXECUTION GRAPH — "{taskTitle || 'Autonomous Sandbox Review & Verification'}"
+      <Box justifyContent="space-between" marginBottom={1} flexShrink={0}>
+        <Text color="yellow" bold wrap="truncate">
+          TASK EXECUTION GRAPH — "{taskTitle || 'Autonomous Sandbox Review & Verification'}"
         </Text>
-        <Text color="gray">
-          [{defaultNodes.length} Total Steps]
+        <Text color="gray" flexShrink={0}>
+          [{defaultNodes.length} Steps]
         </Text>
       </Box>
 
@@ -80,12 +80,12 @@ export const TaskGraphView: React.FC<TaskGraphViewProps> = ({
         {visibleNodes.map((node, index) => {
           const isSelected = index === selectedIndex;
           const isChild = Boolean(node.parentId);
-          const indent = isChild ? '       ├─ ' : '  ';
+          const indent = isChild ? '       |- ' : '  ';
 
           return (
-            <Box key={node.id} gap={1}>
+            <Box key={node.id} gap={1} flexShrink={0}>
               <Text color={isSelected ? 'yellow' : 'gray'}>
-                {isSelected ? '👑' : ' '}
+                {isSelected ? '>' : ' '}
                 {indent}[{node.id}]
               </Text>
 
@@ -101,11 +101,12 @@ export const TaskGraphView: React.FC<TaskGraphViewProps> = ({
                 }
                 bold={isSelected || node.status === 'running'}
                 underline={isSelected}
+                wrap="truncate"
               >
                 {node.label}
               </Text>
 
-              {node.detail && <Text color="gray">({node.detail})</Text>}
+              {node.detail && <Text color="gray" wrap="truncate">({node.detail})</Text>}
 
               <Box flexGrow={1} />
 
@@ -123,21 +124,23 @@ export const TaskGraphView: React.FC<TaskGraphViewProps> = ({
           borderStyle="single"
           borderColor="magenta"
           justifyContent="space-between"
+          flexShrink={0}
         >
-          <Box gap={1}>
+          <Box gap={1} flexShrink={1}>
             <Text color="yellow" bold>Node Detail:</Text>
-            <Text color="white">{defaultNodes[selectedIndex].detail || defaultNodes[selectedIndex].label}</Text>
+            <Text color="white" wrap="truncate">{defaultNodes[selectedIndex].detail || defaultNodes[selectedIndex].label}</Text>
           </Box>
-          <Text color="gray">Step {selectedIndex + 1}/{defaultNodes.length}</Text>
+          <Text color="gray" flexShrink={0}>Step {selectedIndex + 1}/{defaultNodes.length}</Text>
         </Box>
       )}
 
       {/* Keyboard Shortcuts Hint */}
-      <Box marginTop={0} gap={3}>
-        <Text color="gray">↑/↓: navigate nodes</Text>
+      <Box marginTop={0} gap={3} flexShrink={0}>
+        <Text color="gray">up/down: navigate</Text>
         <Text color="magenta">/diff: switch view</Text>
         <Text color="yellow">/approve: push to github</Text>
       </Box>
     </Box>
   );
 };
+
